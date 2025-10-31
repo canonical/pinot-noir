@@ -1,0 +1,32 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		{% block title %}<title>Default</title>{% endblock %}
+		<meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Author: Lena Voytek">
+
+        <link rel="icon" href="{% static 'images/logo.png' %}">
+
+        <link rel="stylesheet" href="https://assets.ubuntu.com/v1/vanilla-framework-version-4.24.1.min.css" />
+
+        {% block includes %}{% endblock %}
+	</head>
+	<body>
+        <div class="l-application" role="presentation">
+            <div class="l-navigation-bar">
+                <div class="p-panel is-dark">
+                    {% block navigation %}{% endblock %}
+                </div>
+            </div>
+
+            <main class="l-main">
+                <div class="p-panel">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+	</body>
+</html>
