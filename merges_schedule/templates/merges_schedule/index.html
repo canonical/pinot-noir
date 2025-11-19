@@ -3,12 +3,46 @@
 {% block title %}<title>{{ title|default:'Merge Schedule' }}</title>{% endblock %}
 
 {% block content %}
-    <div class="p-panel__content">
-        <h1 class="p-heading--2">{{ title }}</h1>
-        <p>{{ description }}</p>
-
-        <section>
-            <p>No merges scheduled yet. Add entries in the `merges_schedule` app.</p>
-        </section>
+<div class="p-panel__header page-header">
+    <div class="page-header__left">
+        <h1 class="p-heading--4 u-no-margin--bottom">
+            <div class="help-link">{{ title }}</div>
+        </h1>
     </div>
+    <div class="page-header__base-actions">
+        <button class="p-button--positive has-icon u-float-right u-no-margin--bottom" title="">
+            <i class="p-icon--plus is-light"></i><span>Create merge</span>
+        </button>
+    </div>
+</div>
+<div class="p-panel__content detail-page">
+    <div class="row">
+        <table aria-label="Merges Status">
+            <thead>
+                <tr>
+                    <th>Package</th>
+                    <th>Type</th>
+                    <th>Assignee</th>
+                    <th class="u-align--right">Milestone</th>
+                    <th class="u-align--right">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for merge in merges %}
+                <tr>
+                    <th class="u-truncate">{{ merge.package }}</th>
+                    <td>{{ merge.type }}</td>
+                    <td>{{ merge.assignee }}</td>
+                    <td class="u-align--right">{{ merge.milestone }}</td>
+                    <td class="u-align--right">{{ merge.status }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No merges scheduled.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
