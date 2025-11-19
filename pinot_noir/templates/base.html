@@ -1,0 +1,60 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		{% block title %}<title>Default</title>{% endblock %}
+		<meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Author: Lena Voytek">
+
+        <link rel="icon" href="{% static 'images/logo.png' %}">
+
+        <link rel="stylesheet" href="https://assets.ubuntu.com/v1/vanilla-framework-version-4.24.1.min.css" />
+
+        {% block includes %}{% endblock %}
+	</head>
+	<body>
+        <div class="l-application" role="presentation">
+            <nav aria-label="main navigation" class="l-navigation is-pinned">
+                <div class="l-navigation__drawer">
+                    <div class="p-panel is-dark">
+                        <div class="p-panel__header is-sticky">
+                            <a aria-current="page" class="p-panel__logo active" href="/ui/project/default" data-discover="true">
+                                <img alt="Pinot Noir logo" class="p-panel__logo-image" src="/static/pinot-noir-logo.svg">
+                                <div class="logo-text p-heading--4">Pinot Noir</div>
+                            </a>
+                        </div>
+                        <div class="p-panel__content" style="height: 283px">
+                            <div class="p-side-navigation--icons sidenav-top-container">
+                                <ul class="p-side-navigation__list sidenav-top-ul">
+                                    <li class="p-side-navigation__item">
+                                        <a title="Instances (default)" class="p-side-navigation__link" href="/merges-schedule" data-discover="true">
+                                            <i class="is-light p-side-navigation__icon p-icon--pods"></i> Merge Schedule
+                                        </a>
+                                    </li>
+                                    <li class="p-side-navigation__item">
+                                        <a title="Profiles (default)" class="p-side-navigation__link" aria-disabled="false" href="/reviews" data-discover="true">
+                                            <i class="is-light p-side-navigation__icon p-icon--repository"></i> Reviews
+                                        </a>
+                                    </li>
+                                </ul>
+                                <div class="sidenav-toggle-wrapper authenticated-nav">
+                                    <button class="p-button--base has-icon is-dense sidenav-toggle u-no-margin l-navigation-collapse-toggle u-hide--small" aria-label="collapse main navigation">
+                                        <i class="p-icon--sidebar-toggle"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="l-main">
+                <div class="p-panel">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+	</body>
+</html>

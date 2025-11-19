@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}<title>{{ title|default:'Merge Schedule' }}</title>{% endblock %}
+
+{% block content %}
+    <div class="p-panel__content">
+        <h1 class="p-heading--2">{{ title }}</h1>
+        <p>{{ description }}</p>
+
+        <section>
+            <p>No merges scheduled yet. Add entries in the `merges_schedule` app.</p>
+        </section>
+    </div>
+{% endblock %}
