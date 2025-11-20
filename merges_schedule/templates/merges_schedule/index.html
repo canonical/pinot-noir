@@ -24,7 +24,7 @@
                     <th>Type</th>
                     <th>Assignee</th>
                     <th class="u-align--right">Milestone</th>
-                    <th class="u-align--right">Status</th>
+                    <th class="u-align--center">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -34,7 +34,17 @@
                     <td>{{ merge.type }}</td>
                     <td>{{ merge.assignee }}</td>
                     <td class="u-align--right">{{ merge.milestone }}</td>
-                    <td class="u-align--right">{{ merge.status }}</td>
+                    <td class="u-align--center">
+                        {% if merge.status == "done" %}
+                            <span class="p-chip--positive">{{ merge.status }}</span>
+                        {% elif merge.status == "started" %}
+                            <span class="p-chip--caution">{{ merge.status }}</span>
+                        {% elif merge.status == "projected" %}
+                            <span class="p-chip--info">{{ merge.status }}</span>
+                        {% else %}
+                            <span class="p-chip">{{ merge.status }}</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
