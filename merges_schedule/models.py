@@ -24,10 +24,22 @@ class Merge(models.Model):
 		(STATUS_DONE, "done"),
 	]
 
+	# Launchpad bug number - primary key
+	lp_bug = models.PositiveIntegerField(primary_key=True)
+
+    # Name of package to update
 	package = models.CharField(max_length=200)
-	type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_MERGE)
+
+    # Type of merge - merge, sync, backport, etc.
+	merge_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_MERGE)
+
+    # Launchpad username of assignee
 	assignee = models.CharField(max_length=100, blank=True)
+
+    # Ubuntu release milestone the merge should be completed for
 	milestone = models.CharField(max_length=100, blank=True)
+
+    # Current status of the merge
 	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NEW)
 
 	created_at = models.DateTimeField(auto_now_add=True)

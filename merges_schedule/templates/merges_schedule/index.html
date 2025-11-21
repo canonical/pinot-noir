@@ -30,8 +30,10 @@
             <tbody>
                 {% for merge in merges %}
                 <tr>
-                    <th class="u-truncate">{{ merge.package }}</th>
-                    <td>{{ merge.type }}</td>
+                    <th class="u-truncate">
+                        <a href="https://bugs.launchpad.net/ubuntu/+bug/{{ merge.lp_bug }}" target="_blank" rel="noopener noreferrer">{{ merge.package }}</a>
+                    </th>
+                    <td>{{ merge.merge_type }}</td>
                     <td>{{ merge.assignee }}</td>
                     <td class="u-align--right">{{ merge.milestone }}</td>
                     <td class="u-align--center">
