@@ -49,4 +49,4 @@ class Merge(models.Model):
 		ordering = ["-created_at"]
 
 	def __str__(self) -> str:
-		return f"{self.package} ({self.type}) - {self.status}"
+		return f"{self.package} ({self.merge_type}) - {self.status}"
