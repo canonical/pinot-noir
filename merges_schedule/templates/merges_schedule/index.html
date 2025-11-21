@@ -4,18 +4,16 @@
 
 {% block content %}
 <div class="p-panel__header page-header">
-    <div class="page-header__left">
-        <h1 class="p-heading--4 u-no-margin--bottom">
-            <div class="help-link">{{ title }}</div>
-        </h1>
-    </div>
-    <div class="page-header__base-actions">
-        <button class="p-button--positive has-icon u-float-right u-no-margin--bottom" title="">
-            <i class="p-icon--plus is-light"></i><span>Create merge</span>
+    <h4 class="p-panel__title">
+        <div class="help-link">{{ title }}</div>
+    </h4>
+    <div class="p-panel__controls">
+        <button class="p-button--positive u-no-margin--bottom" title="">
+            <i class="p-icon--plus is-light"></i> <span>Create merge</span>
         </button>
     </div>
 </div>
-<div class="p-panel__content detail-page">
+<div class="p-panel__content">
     <div class="row">
         <table aria-label="Merges Status">
             <thead>
