@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
 {% block title %}<title>{{ title|default:'Merge Schedule' }}</title>{% endblock %}
+
+{% block includes %}<script src="{% static 'scripts/tablesorting.js' %}"></script>{% endblock %}
 
 {% block content %}
 <div class="p-panel__header page-header">
@@ -18,11 +22,11 @@
         <table aria-label="Merges Status">
             <thead>
                 <tr>
-                    <th>Package</th>
-                    <th>Type</th>
-                    <th>Assignee</th>
-                    <th class="u-align--right">Milestone</th>
-                    <th class="u-align--center">Status</th>
+                    <th aria-sort="none">Package</th>
+                    <th aria-sort="none">Milestone</th>
+                    <th aria-sort="none">Type</th>
+                    <th aria-sort="none">Assignee</th>
+                    <th class="u-align--center" aria-sort="none">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -31,6 +35,7 @@
                     <th class="u-truncate">
                         <a href="https://bugs.launchpad.net/ubuntu/+bug/{{ merge.lp_bug }}" target="_blank" rel="noopener noreferrer">{{ merge.package }}</a>
                     </th>
+                    <td>{{ merge.milestone }}</td>
                     <td>{{ merge.merge_type }}</td>
                     <td>
                         {% if merge.assignee %}
@@ -39,16 +44,13 @@
                             &mdash;
                         {% endif %}
                     </td>
-                    <td class="u-align--right">{{ merge.milestone }}</td>
                     <td class="u-align--center">
                         {% if merge.status == "done" %}
-                            <span class="p-chip--positive">{{ merge.status }}</span>
+                            <span class="p-chip--positive is-inline">{{ merge.status }}</span>
                         {% elif merge.status == "started" %}
-                            <span class="p-chip--caution">{{ merge.status }}</span>
-                        {% elif merge.status == "projected" %}
-                            <span class="p-chip--information">{{ merge.status }}</span>
+                            <span class="p-chip--information is-inline">{{ merge.status }}</span>
                         {% else %}
-                            <span class="p-chip">{{ merge.status }}</span>
+                            <span class="p-chip is-inline">{{ merge.status }}</span>
                         {% endif %}
                     </td>
                 </tr>
