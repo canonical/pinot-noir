@@ -38,8 +38,13 @@
                     <td>{{ merge.milestone }}</td>
                     <td>{{ merge.merge_type }}</td>
                     <td>
-                        {% if merge.assignee %}
-                            <a href="https://launchpad.net/~{{ merge.assignee }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee }}</a>
+                        {% if merge.assignee_user %}
+                            {% if merge.assignee_user.email_md5 %}
+                                <img src="{{ merge.assignee_user.gravatar_url }}" alt="{{ merge.assignee_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                            {% endif %}
+                            <a href="https://launchpad.net/~{{ merge.assignee_user.username }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee_user.username }}</a>
+                        {% elif merge.assignee %}
+                            <a href="https://launchpad.net/~{{ merge.assignee|lower }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee }}</a>
                         {% else %}
                             &mdash;
                         {% endif %}

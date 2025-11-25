@@ -36,6 +36,15 @@ class Merge(models.Model):
     # Launchpad username of assignee
 	assignee = models.CharField(max_length=100, blank=True)
 
+	# Optional foreign key to a Launchpad user; will be populated from `assignee` via migration
+	assignee_user = models.ForeignKey(
+		"launchpad.LPUser",
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+		related_name="merges",
+	)
+
     # Ubuntu release milestone the merge should be completed for
 	milestone = models.CharField(max_length=100, blank=True)
 

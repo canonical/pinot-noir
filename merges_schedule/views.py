@@ -5,7 +5,7 @@ from .models import Merge
 
 def index(request):
 	"""Render the merges schedule page using stored Merge objects."""
-	merges = Merge.objects.all()
+	merges = Merge.objects.select_related("assignee_user").all()
 	context = {
 		"title": "Merge Schedule",
 		"merges": merges,
