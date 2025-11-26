@@ -4,13 +4,54 @@
 
 {% block title %}<title>{{ title|default:'Merge Schedule' }}</title>{% endblock %}
 
-{% block includes %}<script src="{% static 'scripts/tablesorting.js' %}"></script>{% endblock %}
+{% block includes %}
+<script src="{% static 'scripts/tablesorting.js' %}"></script>
+<script src="{% static 'scripts/searchandfilter.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-<div class="p-panel__header page-header">
-    <h4 class="p-panel__title">
-        <div class="help-link">{{ title }}</div>
-    </h4>
+<div class="p-panel__header">
+    <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
+
+    <!-- Search & filter bar -->
+    <div class="p-panel__title p-search-and-filter u-no-padding--bottom" style="width: 35vw; height: 100%;">
+        <div class="p-search-and-filter__search-container" aria-expanded="false" data-active="false" data-empty="true">
+            <form class="p-search-and-filter__box" data-overflowing="false" onsubmit="return false;">
+                <label class="u-off-screen" for="search">Search and filter</label>
+                <input autocomplete="off" class="p-search-and-filter__input" id="search" name="search" placeholder="Search and filter" type="search" value="">
+                <button alt="search" class="p-search-and-filter__search-button" type="submit">Search</button>
+            </form>
+        </div>
+        <div class="p-search-and-filter__panel" aria-hidden="true">
+            <div class="p-filter-panel-section">
+                <h5 class="p-filter-panel-section__heading">Milestone</h5>
+                <div class="p-filter-panel-section__chips" aria-expanded="false">
+                    {% for milestone in milestones %}
+                    <button type="button" class="p-chip" data-filter-type="milestone" data-filter-value="{{ milestone }}"><span class="p-chip__lead">MILESTONE</span><span class="p-chip__value">{{ milestone }}</span></button><!--
+                    -->{% endfor %}
+                </div>
+            </div>
+
+            <div class="p-filter-panel-section">
+                <h5 class="p-filter-panel-section__heading">Status</h5>
+                <div class="p-filter-panel-section__chips" aria-expanded="false">
+                    {% for status in statuses %}
+                    <button type="button" class="p-chip" data-filter-type="status" data-filter-value="{{ status }}"><span class="p-chip__lead">STATUS</span><span class="p-chip__value">{{ status }}</span></button><!--
+                    -->{% endfor %}
+                </div>
+            </div>
+
+            <div class="p-filter-panel-section">
+                <h5 class="p-filter-panel-section__heading">Assignee</h5>
+                <div class="p-filter-panel-section__chips" aria-expanded="false">
+                    {% for assignee in assignees %}
+                    <button type="button" class="p-chip" data-filter-type="assignee" data-filter-value="{{ assignee }}"><span class="p-chip__lead">OWNER</span><span class="p-chip__value">{{ assignee }}</span></button><!--
+                    -->{% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="p-panel__controls">
         <button class="p-button--positive u-no-margin--bottom" title="">
             <i class="p-icon--plus is-light"></i> <span>Create merge</span>
