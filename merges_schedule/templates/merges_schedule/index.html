@@ -101,10 +101,15 @@
                     </td>
                 </tr>
                 {% empty %}
+                <!-- No merges are found in the database. -->
                 <tr>
                     <td colspan="5">No merges scheduled.</td>
                 </tr>
                 {% endfor %}
+                <!-- Row shown when no search results are found. Hidden by default. -->
+                <tr class="js-no-filter-results" hidden>
+                    <td colspan="5">No matching merges found.</td>
+                </tr>
             </tbody>
         </table>
     </div>
