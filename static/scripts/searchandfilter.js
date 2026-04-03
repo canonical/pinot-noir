@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
             assignee: new Set()
         };
 
+        var selectedChipsContainer = pattern.querySelector('.p-search-and-filter__selected-chips');
         var noResultsRow = tableBody.querySelector('.js-no-filter-results');
 
         // Show or hide table rows based on selected chips in search and filter panel.
@@ -111,6 +112,67 @@ document.addEventListener('DOMContentLoaded', function () {
             noResultsRow.hidden = visibleCount > 0;
         }
 
+        var selectedChipsContainer = pattern.querySelector('.p-search-and-filter__selected-chips');
+
+        // Update the display of selected chips in the search bar.
+        function updateSelectedChipsDisplay() {
+            selectedChipsContainer.innerHTML = '';
+
+            var hasSelected = false;
+
+            Object.keys(activeFilters).forEach(function(filterType) {
+                activeFilters[filterType].forEach(function(filterValue) {
+                    hasSelected = true;
+
+                    var label = filterType.charAt(0).toUpperCase() + filterType.slice(1);
+                    var chipEl = document.createElement('span');
+                    chipEl.className = 'p-chip';
+
+                    var leadEl = document.createElement('span');
+                    leadEl.className = 'p-chip__lead';
+                    leadEl.textContent = label.toUpperCase();
+
+                    var valueEl = document.createElement('span');
+                    valueEl.className = 'p-chip__value';
+                    valueEl.textContent = filterValue;
+
+                    var dismissBtn = document.createElement('button');
+                    dismissBtn.className = 'p-chip__dismiss';
+                    dismissBtn.setAttribute('aria-label', 'Dismiss ' + label + ' filter');
+                    dismissBtn.type = 'button';
+                    dismissBtn.textContent = 'Dismiss';
+
+                    dismissBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        activeFilters[filterType].delete(filterValue);
+
+                        var filterChip = [].slice.call(chips).find(function(c) {
+                            return c.getAttribute('data-filter-type') === filterType &&
+                                   getStandardEntryFromChipText(c.getAttribute('data-filter-value')) === filterValue;
+                        });
+
+                        if (filterChip) {
+                            filterChip.classList.remove('is-active');
+                            filterChip.setAttribute('aria-pressed', 'false');
+                        }
+
+                        updateSelectedChipsDisplay();
+                        applyChipFilters();
+                    });
+
+                    chipEl.appendChild(leadEl);
+                    chipEl.appendChild(valueEl);
+                    chipEl.appendChild(dismissBtn);
+                    selectedChipsContainer.appendChild(chipEl);
+                });
+            });
+
+            container.setAttribute('data-active', hasSelected ? 'true' : 'false');
+            container.setAttribute('data-empty', hasSelected ? 'false' : 'true');
+        }
+
         // Prepare dynamic chip filters.
         chips.forEach(function(chip) {
             let filterType = chip.getAttribute('data-filter-type');
@@ -135,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     chip.setAttribute('aria-pressed', 'true');
                 }
 
+                updateSelectedChipsDisplay();
                 applyChipFilters();
             });
         });
