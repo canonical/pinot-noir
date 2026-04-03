@@ -29,7 +29,7 @@ def index(request):
 
 	# Lists for search and filter
 	milestones = sorted({m.milestone for m in merges if m.milestone})
-	assignees = sorted({(m.assignee_user.username if m.assignee_user else "") for m in merges})
+	assignees = sorted({(m.assignee_user.username if m.assignee_user else "UNASSIGNED") for m in merges})
 	statuses = [s for s, _ in sorted(Merge.STATUS_CHOICES, key=lambda item: STATUS_ORDER.get(item[0], -1))]
 
 	context = {
