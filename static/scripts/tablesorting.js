@@ -12,8 +12,18 @@ function sortTable(header, table) {
   };
 
   // Get index of column based on position of header cell in <thead>
-  // We assume there is only one row in the table head.
-  var col = [].slice.call(table.tHead.rows[0].cells).indexOf(header);
+  var headerCells = [].slice.call(table.tHead.rows[0].cells);
+  var col = -1;
+  for (var x = 0; x < headerCells.length; x += 1) {
+    if (headerCells[x] === header) {
+      col = x;
+      break;
+    }
+  }
+
+  if (col === -1) {
+    return;
+  }
 
   // Based on the current aria-sort value, get the next state.
   var newOrder = SORTABLE_STATES.ORDER.indexOf(header.getAttribute('aria-sort')) + 1;
@@ -22,7 +32,6 @@ function sortTable(header, table) {
 
   // Reset all header sorts.
   var headerSorts = table.querySelectorAll('[aria-sort]');
-
   for (var i = 0, ii = headerSorts.length; i < ii; i += 1) {
     headerSorts[i].setAttribute('aria-sort', 'none');
   }
@@ -30,38 +39,52 @@ function sortTable(header, table) {
   // Set the new header sort.
   header.setAttribute('aria-sort', newOrder);
 
-  // Get the direction of the sort and assume only one tbody.
-  // For this example only assume one tbody.
   var direction = SORTABLE_STATES[newOrder];
   var body = table.tBodies[0];
 
-  // Convert the HTML element list to an array.
-  var newRows = [].slice.call(body.rows, 0);
+  // Separate data rows from state rows
+  var dataRows = [];
+  var stateRows = [];
 
-  // If the direction is 0 - aria-sort="none".
+  [].slice.call(body.rows).forEach(function(row) {
+    if (row.getAttribute('data-index') !== null) {
+      dataRows.push(row);
+    } else {
+      stateRows.push(row);
+    }
+  });
+
+  // If the direction is 0 ignore sorting for column.
   if (direction === 0) {
-    // Reset to the default order.
-    newRows.sort(function(a, b) {
+    dataRows.sort(function(a, b) {
       return a.getAttribute('data-index') - b.getAttribute('data-index');
     });
   } else {
-    // Sort based on a cell contents
-    newRows.sort(function(rowA, rowB) {
-      // Trim the cell contents.
-      var contentA = rowA.cells[col].textContent.trim();
-      var contentB = rowB.cells[col].textContent.trim();
-
-      // Based on the direction, do the sort.
-      //
-      // This example only sorts based on alphabetical order, to sort based on
-      // number value a more specific implementation would be needed, to provide
-      // number parsing and comparison function between text strings and numbers.
-      return contentA < contentB ? direction : -direction;
+    // Pre-extract content to avoid live collection problems
+    var rowContent = dataRows.map(function(row) {
+      var content = row.cells[col] ? row.cells[col].textContent.trim() : '';
+      return { row: row, content: content };
     });
+
+    // Sort extracted data
+    rowContent.sort(function(a, b) {
+      var strA = String(a.content).toLowerCase();
+      var strB = String(b.content).toLowerCase();
+      var comparison = strA < strB ? -1 : strA > strB ? 1 : 0;
+      return direction === -1 ? comparison : -comparison;
+    });
+
+    // Update dataRows with sorted rows
+    dataRows = rowContent.map(function(item) { return item.row; });
   }
-  // Append each row into the table, replacing the current elements.
-  for (i = 0, ii = body.rows.length; i < ii; i += 1) {
-    body.appendChild(newRows[i]);
+
+  // Rebuild tbody
+  var allRows = dataRows.concat(stateRows);
+  while (body.firstChild) {
+    body.removeChild(body.firstChild);
+  }
+  for (i = 0; i < allRows.length; i += 1) {
+    body.appendChild(allRows[i]);
   }
 }
 
@@ -76,7 +99,7 @@ function setupClickableHeader(table, header) {
  * @param {HTMLTableElement} table
  */
 function setupSortableTable(table) {
-  // For this example, assume only one tbody.
+  // Assume only one tbody is in the table.
   var rows = table.tBodies[0].rows;
   // Set an index for the default order.
   for (var row = 0, totalRows = rows.length; row < totalRows; row += 1) {
