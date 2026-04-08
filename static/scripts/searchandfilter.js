@@ -173,7 +173,67 @@ document.addEventListener('DOMContentLoaded', function () {
             container.setAttribute('data-empty', hasSelected ? 'false' : 'true');
         }
 
-        // Prepare dynamic chip filters.
+        // Prepare chip filtering while typing in the search bar.
+        // Remove chips that do not match search text, and hide empty sections as needed.
+        var filterSections = [].slice.call(panel.querySelectorAll('.p-filter-panel-section'));
+
+        function applyChipSearchFilter(searchText) {
+            var normalizedSearchText = String(searchText || '').trim().toLowerCase();
+            var visibleChipCount = 0;
+            var visibleSectionCount = 0;
+
+            chips.forEach(function(chip) {
+                var chipValue = String(chip.getAttribute('data-filter-value') || '').trim().toLowerCase();
+                var shouldShow = !normalizedSearchText || chipValue.indexOf(normalizedSearchText) !== -1;
+                chip.hidden = !shouldShow;
+                chip.style.display = shouldShow ? '' : 'none';
+
+                if (shouldShow) {
+                    visibleChipCount += 1;
+                }
+            });
+
+            filterSections.forEach(function(section) {
+                var sectionVisibleChipCount = section.querySelectorAll('.p-chip[data-filter-type]:not([hidden])').length;
+                var showSection = sectionVisibleChipCount > 0;
+
+                section.hidden = !showSection;
+                section.style.display = showSection ? '' : 'none';
+
+                if (showSection) {
+                    visibleSectionCount += 1;
+                }
+            });
+
+            if (normalizedSearchText && visibleChipCount === 0 && visibleSectionCount === 0) {
+                panel.style.display = 'none';
+                panel.hidden = true;
+                togglePanel(container, panel, true);
+            } else {
+                panel.style.display = '';
+                panel.hidden = false;
+
+                if (document.activeElement === input || panel.contains(document.activeElement)) {
+                    togglePanel(container, panel, false);
+                }
+            }
+        }
+
+        // 180ms search debounce for chip filtering.
+        var chipSearchDebounceTimer;
+        function scheduleChipSearchFilterUpdate() {
+            window.clearTimeout(chipSearchDebounceTimer);
+
+            chipSearchDebounceTimer = window.setTimeout(function() {
+                applyChipSearchFilter(input.value);
+            }, 180);
+        }
+
+        input.addEventListener('input', scheduleChipSearchFilterUpdate);
+        input.addEventListener('keyup', scheduleChipSearchFilterUpdate);
+        input.addEventListener('search', scheduleChipSearchFilterUpdate);
+
+        // Prepare filtering when chip selected.
         chips.forEach(function(chip) {
             let filterType = chip.getAttribute('data-filter-type');
             let filterValue = getStandardEntryFromChipText(chip.getAttribute('data-filter-value'));
@@ -197,6 +257,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     chip.setAttribute('aria-pressed', 'true');
                 }
 
+                input.value = '';
+                applyChipSearchFilter('');
+
                 updateSelectedChipsDisplay();
                 applyChipFilters();
             });
@@ -217,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         input.addEventListener('focus', function() {
             togglePanel(container, panel, false);
+            applyChipSearchFilter(input.value);
         });
 
         panel.addEventListener('focusin', function() {
