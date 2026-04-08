@@ -219,14 +219,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // 180ms search debounce for chip filtering.
+        // 100ms search debounce for chip filtering.
         var chipSearchDebounceTimer;
         function scheduleChipSearchFilterUpdate() {
             window.clearTimeout(chipSearchDebounceTimer);
 
             chipSearchDebounceTimer = window.setTimeout(function() {
                 applyChipSearchFilter(input.value);
-            }, 180);
+            }, 100);
         }
 
         input.addEventListener('input', scheduleChipSearchFilterUpdate);
