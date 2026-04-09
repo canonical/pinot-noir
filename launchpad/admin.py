@@ -44,5 +44,5 @@ class LPUserAdmin(admin.ModelAdmin):
 
 @admin.register(UbuntuRelease)
 class UbuntuReleaseAdmin(admin.ModelAdmin):
-    list_display = ("adjective", "animal", "version")
-    search_fields = ("adjective", "animal", "version")
+    list_display = ("adjective", "animal", "version", "status")
+    search_fields = ("adjective", "animal", "version", "status")

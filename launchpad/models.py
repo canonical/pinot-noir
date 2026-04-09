@@ -27,10 +27,27 @@ class LPUser(models.Model):
 
 class UbuntuRelease(models.Model):
     """Ubuntu release model."""
+    STATUS_DEVEL = "devel"
+    STATUS_SUPPORTED = "supported"
+    STATUS_EXTENDED_SUPPORT = "esm"
+    STATUS_END_OF_LIFE = "eol"
 
+    STATUS_CHOICES = [
+        (STATUS_DEVEL, "devel"),
+        (STATUS_SUPPORTED, "supported"),
+        (STATUS_EXTENDED_SUPPORT, "esm"),
+        (STATUS_END_OF_LIFE, "eol"),
+    ]
+
+    # Release name
     adjective = models.CharField(max_length=30, unique=True)
     animal = models.CharField(max_length=30, unique=True)
+
+    # Release version - 2X.XX
     version = models.CharField(max_length=10, blank=True)
+
+    # Release status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DEVEL)
 
     class Meta:
         verbose_name = "Ubuntu release"
