@@ -7,112 +7,117 @@
 {% block includes %}
 <script src="{% static 'scripts/tablesorting.js' %}"></script>
 <script src="{% static 'scripts/searchandfilter.js' %}"></script>
+<script src="{% static 'scripts/createmergepanel.js' %}"></script>
 {% endblock %}
 
 {% block content %}
-<div class="p-panel__header">
-    <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
+<main id="main-content" class="l-main">
+    <div class="p-panel">
+        <div class="p-panel__header">
+            <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
 
-    <!-- Search & filter bar -->
-    <div class="p-search-and-filter u-no-padding--bottom" style="width: 35vw; height: 100%; padding-top: 1rem;">
-        <div class="p-search-and-filter__search-container" aria-expanded="false" data-active="false" data-empty="true">
-            <div class="p-search-and-filter__selected-chips"></div>
-            <form class="p-search-and-filter__box" data-overflowing="false" onsubmit="return false;">
-                <label class="u-off-screen" for="search">Search and filter</label>
-                <input autocomplete="off" class="p-search-and-filter__input" id="search" name="search" placeholder="Search and filter" type="search" value="">
-                <button alt="search" class="p-search-and-filter__search-button" type="submit">Search</button>
-            </form>
+            <!-- Search & filter bar -->
+            <div class="p-search-and-filter u-no-padding--bottom" style="width: 35vw; height: 100%; padding-top: 1rem;">
+                <div class="p-search-and-filter__search-container" aria-expanded="false" data-active="false" data-empty="true">
+                    <div class="p-search-and-filter__selected-chips"></div>
+                    <form class="p-search-and-filter__box" data-overflowing="false" onsubmit="return false;">
+                        <label class="u-off-screen" for="search">Search and filter</label>
+                        <input autocomplete="off" class="p-search-and-filter__input" id="search" name="search" placeholder="Search and filter" type="search" value="">
+                        <button alt="search" class="p-search-and-filter__search-button" type="submit">Search</button>
+                    </form>
+                </div>
+                <div class="p-search-and-filter__panel" aria-hidden="true">
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Milestone</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for milestone in milestones %}
+                            <button type="button" class="p-chip" data-filter-type="milestone" data-filter-value="{{ milestone }}"><span class="p-chip__lead">MILESTONE</span><span class="p-chip__value">{{ milestone }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Status</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for status in statuses %}
+                            <button type="button" class="p-chip" data-filter-type="status" data-filter-value="{{ status }}"><span class="p-chip__lead">STATUS</span><span class="p-chip__value">{{ status }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Assignee</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for assignee in assignees %}
+                            <button type="button" class="p-chip" data-filter-type="assignee" data-filter-value="{{ assignee }}"><span class="p-chip__lead">OWNER</span><span class="p-chip__value">{{ assignee }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-panel__controls">
+                <button type="button" class="p-button--positive u-no-margin--bottom js-aside-open" title="Create a new merge">
+                    <i class="p-icon--plus is-light"></i> <span>Create merge</span>
+                </button>
+            </div>
         </div>
-        <div class="p-search-and-filter__panel" aria-hidden="true">
-            <div class="p-filter-panel-section">
-                <h5 class="p-filter-panel-section__heading">Milestone</h5>
-                <div class="p-filter-panel-section__chips" aria-expanded="false">
-                    {% for milestone in milestones %}
-                    <button type="button" class="p-chip" data-filter-type="milestone" data-filter-value="{{ milestone }}"><span class="p-chip__lead">MILESTONE</span><span class="p-chip__value">{{ milestone }}</span></button><!--
-                    -->{% endfor %}
-                </div>
-            </div>
-
-            <div class="p-filter-panel-section">
-                <h5 class="p-filter-panel-section__heading">Status</h5>
-                <div class="p-filter-panel-section__chips" aria-expanded="false">
-                    {% for status in statuses %}
-                    <button type="button" class="p-chip" data-filter-type="status" data-filter-value="{{ status }}"><span class="p-chip__lead">STATUS</span><span class="p-chip__value">{{ status }}</span></button><!--
-                    -->{% endfor %}
-                </div>
-            </div>
-
-            <div class="p-filter-panel-section">
-                <h5 class="p-filter-panel-section__heading">Assignee</h5>
-                <div class="p-filter-panel-section__chips" aria-expanded="false">
-                    {% for assignee in assignees %}
-                    <button type="button" class="p-chip" data-filter-type="assignee" data-filter-value="{{ assignee }}"><span class="p-chip__lead">OWNER</span><span class="p-chip__value">{{ assignee }}</span></button><!--
-                    -->{% endfor %}
-                </div>
+        <div class="p-panel__content">
+            <div class="u-fixed-width">
+                <table aria-label="Merges Status">
+                    <thead>
+                        <tr>
+                            <th aria-sort="none">Package</th>
+                            <th aria-sort="none">Milestone</th>
+                            <th aria-sort="none">Type</th>
+                            <th aria-sort="none">Assignee</th>
+                            <th class="u-align--center" aria-sort="none">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for merge in merges %}
+                        <tr>
+                            <th class="u-truncate">
+                                <a href="https://bugs.launchpad.net/ubuntu/+bug/{{ merge.lp_bug }}" target="_blank" rel="noopener noreferrer">{{ merge.package }}</a>
+                            </th>
+                            <td>{{ merge.milestone }}</td>
+                            <td>{{ merge.merge_type }}</td>
+                            <td>
+                                {% if merge.assignee_user %}
+                                    {% if merge.assignee_user.email_md5 %}
+                                        <img src="{{ merge.assignee_user.gravatar_url }}" alt="{{ merge.assignee_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                                    {% endif %}
+                                    <a href="https://launchpad.net/~{{ merge.assignee_user.username }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee_user.username }}</a>
+                                {% elif merge.assignee %}
+                                    <a href="https://launchpad.net/~{{ merge.assignee|lower }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee }}</a>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            <td class="u-align--center">
+                                {% if merge.status == "done" %}
+                                    <span class="p-chip--positive is-inline">{{ merge.status }}</span>
+                                {% elif merge.status == "started" %}
+                                    <span class="p-chip--information is-inline">{{ merge.status }}</span>
+                                {% else %}
+                                    <span class="p-chip is-inline">{{ merge.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <!-- No merges are found in the database. -->
+                        <tr>
+                            <td colspan="5">No merges scheduled.</td>
+                        </tr>
+                        {% endfor %}
+                        <!-- Row shown when no search results are found. Hidden by default. -->
+                        <tr class="js-no-filter-results" hidden>
+                            <td colspan="5">No matching merges found.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-
-    <div class="p-panel__controls">
-        <button class="p-button--positive u-no-margin--bottom" title="">
-            <i class="p-icon--plus is-light"></i> <span>Create merge</span>
-        </button>
-    </div>
-</div>
-<div class="p-panel__content">
-    <div class="u-fixed-width">
-        <table aria-label="Merges Status">
-            <thead>
-                <tr>
-                    <th aria-sort="none">Package</th>
-                    <th aria-sort="none">Milestone</th>
-                    <th aria-sort="none">Type</th>
-                    <th aria-sort="none">Assignee</th>
-                    <th class="u-align--center" aria-sort="none">Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for merge in merges %}
-                <tr>
-                    <th class="u-truncate">
-                        <a href="https://bugs.launchpad.net/ubuntu/+bug/{{ merge.lp_bug }}" target="_blank" rel="noopener noreferrer">{{ merge.package }}</a>
-                    </th>
-                    <td>{{ merge.milestone }}</td>
-                    <td>{{ merge.merge_type }}</td>
-                    <td>
-                        {% if merge.assignee_user %}
-                            {% if merge.assignee_user.email_md5 %}
-                                <img src="{{ merge.assignee_user.gravatar_url }}" alt="{{ merge.assignee_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
-                            {% endif %}
-                            <a href="https://launchpad.net/~{{ merge.assignee_user.username }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee_user.username }}</a>
-                        {% elif merge.assignee %}
-                            <a href="https://launchpad.net/~{{ merge.assignee|lower }}" target="_blank" rel="noopener noreferrer">{{ merge.assignee }}</a>
-                        {% else %}
-                            &mdash;
-                        {% endif %}
-                    </td>
-                    <td class="u-align--center">
-                        {% if merge.status == "done" %}
-                            <span class="p-chip--positive is-inline">{{ merge.status }}</span>
-                        {% elif merge.status == "started" %}
-                            <span class="p-chip--information is-inline">{{ merge.status }}</span>
-                        {% else %}
-                            <span class="p-chip is-inline">{{ merge.status }}</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <!-- No merges are found in the database. -->
-                <tr>
-                    <td colspan="5">No merges scheduled.</td>
-                </tr>
-                {% endfor %}
-                <!-- Row shown when no search results are found. Hidden by default. -->
-                <tr class="js-no-filter-results" hidden>
-                    <td colspan="5">No matching merges found.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+</main>
 {% endblock %}
