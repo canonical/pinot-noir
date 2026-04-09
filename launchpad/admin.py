@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 import hashlib
 
-from .models import LPUser
+from .models import LPUser, UbuntuRelease
 
 
 class LPUserAdminForm(forms.ModelForm):
@@ -40,3 +40,9 @@ class LPUserAdmin(admin.ModelAdmin):
         return mark_safe(f"<img src=\"{url}\" alt=\"{obj.username}\" width=\"48\" height=\"48\" />")
 
     gravatar_preview.short_description = "Gravatar"
+
+
+@admin.register(UbuntuRelease)
+class UbuntuReleaseAdmin(admin.ModelAdmin):
+    list_display = ("adjective", "animal", "version")
+    search_fields = ("adjective", "animal", "version")

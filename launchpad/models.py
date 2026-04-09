@@ -23,3 +23,18 @@ class LPUser(models.Model):
         if not self.email_md5:
             return ""
         return f"https://www.gravatar.com/avatar/{self.email_md5}"
+
+
+class UbuntuRelease(models.Model):
+    """Ubuntu release model."""
+
+    adjective = models.CharField(max_length=30, unique=True)
+    animal = models.CharField(max_length=30, unique=True)
+    version = models.CharField(max_length=10, blank=True)
+
+    class Meta:
+        verbose_name = "Ubuntu release"
+        verbose_name_plural = "Ubuntu releases"
+
+    def __str__(self) -> str:
+        return self.adjective
