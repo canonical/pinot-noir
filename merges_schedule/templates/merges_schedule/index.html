@@ -240,6 +240,27 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="backport-release" class="p-form__label">Affected releases</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    {% for release in ubuntu_releases %}
+                                    {% if release.status == "supported" %}
+                                    <label class="p-checkbox">
+                                        <input type="checkbox" aria-labelledby="backport-to-{{ release.adjective }}" class="p-checkbox__input" checked="">
+                                        <span class="p-checkbox__label" id="backport-to-{{ release.adjective }}">{{ release.adjective }}</span>
+                                    </label>
+                                   {% elif release.status == "esm" %}
+                                    <label class="p-checkbox">
+                                        <input type="checkbox" aria-labelledby="backport-to-{{ release.adjective }}" class="p-checkbox__input">
+                                        <span class="p-checkbox__label" id="backport-to-{{ release.adjective }}">{{ release.adjective }}</span>
+                                    </label>
+                                   {% endif %}
+                                   {% endfor %}
+                                </div>
+                            </div>
                         <div class="row">
                             <div class="col-12">
                                 <button type="submit" class="p-button--positive u-float-right">Create backport</button>

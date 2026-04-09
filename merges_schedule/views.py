@@ -1,5 +1,6 @@
 from django.shortcuts import render
 
+from launchpad.models import UbuntuRelease
 from .models import Merge
 
 # Custom status ordering used both for sorting and for constructing the statuses list
@@ -32,12 +33,16 @@ def index(request):
 	assignees = sorted({(m.assignee_user.username if m.assignee_user else "UNASSIGNED") for m in merges})
 	statuses = [s for s, _ in sorted(Merge.STATUS_CHOICES, key=lambda item: STATUS_ORDER.get(item[0], -1))]
 
+    # Ubuntu releases for selection in backport bug creation
+	ubuntu_releases = UbuntuRelease.objects.all().order_by("-version")
+
 	context = {
 		"title": "Merge Schedule",
 		"merges": sorted_merges,
 		"milestones": milestones,
 		"assignees": assignees,
 		"statuses": statuses,
+		"ubuntu_releases": ubuntu_releases,
 	}
 
 	return render(request, "merges_schedule/index.html", context)
