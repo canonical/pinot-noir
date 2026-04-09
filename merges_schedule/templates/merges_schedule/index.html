@@ -57,8 +57,8 @@
             </div>
 
             <div class="p-panel__controls">
-                <button type="button" class="p-button--positive u-no-margin--bottom js-aside-open" title="Create a new merge">
-                    <i class="p-icon--plus is-light"></i> <span>Create merge</span>
+                <button type="button" class="p-button--positive u-no-margin--bottom js-aside-open" title="Create a new LP bug">
+                    <i class="p-icon--plus is-light"></i> <span>Create Bug</span>
                 </button>
             </div>
         </div>
@@ -124,78 +124,130 @@
 <aside class="l-aside is-collapsed" id="aside-panel">
     <div class="p-panel">
         <div class="p-panel__header">
-            <h4 class="p-panel__title">Create merge</h4>
+            <h4 class="p-panel__title">Create Launchpad Bug</h4>
             <div class="p-panel__controls">
-                <button class="p-button--base js-aside-close u-no-margin--bottom" aria-label="Close create merge panel">
+                <button class="p-button--base js-aside-close u-no-margin--bottom" aria-label="Close create Launchpad bug panel">
                     <i class="p-icon--close"></i>
                 </button>
             </div>
         </div>
         <div class="p-panel__content">
-            <form class="p-form p-form--stacked" id="create-merge-form">
-                <div class="p-form__group row">
-                    <div class="col-4">
-                        <label for="merge-package" class="p-form__label is-required">Package Name</label>
+            <div class="p-tabs">
+                <div class="p-tabs__list" role="tablist" aria-label="Create LP bug">
+                    <div class="p-tabs__item">
+                        <button class="p-tabs__link" role="tab" aria-selected="true" aria-controls="merge-tab-panel" id="merge-tab-button">Merge</button>
                     </div>
-                    <div class="col-8">
-                        <div class="p-form__control">
-                            <input type="text" id="merge-package" name="package" required="">
+                    <div class="p-tabs__item">
+                        <button class="p-tabs__link" role="tab" aria-selected="false" aria-controls="backport-tab-panel" id="backport-tab-button" tabindex="-1">Backport</button>
+                    </div>
+                </div>
+                <div tabindex="0" role="tabpanel" id="merge-tab-panel" aria-labelledby="merge-tab-button">
+                    <form class="p-form p-form--stacked" id="create-merge-form">
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="merge-package" class="p-form__label is-required">Package Name</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    <input type="text" id="merge-package" name="package" required="">
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="p-form__group row">
-                    <div class="col-4">
-                        <label for="merge-milestone" class="p-form__label">Milestone</label>
-                    </div>
-                    <div class="col-8">
-                        <div class="p-form__control">
-                            <select id="merge-milestone" name="milestone">
-                                <option value="">None</option>
-                                {% for milestone in milestones %}
-                                    {% if milestone != "TBD" %}
-                                <option value="{{ milestone }}">{{ milestone }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="merge-milestone" class="p-form__label">Milestone</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    <select id="merge-milestone" name="milestone">
+                                        <option value="">None</option>
+                                        {% for milestone in milestones %}
+                                            {% if milestone != "TBD" %}
+                                        <option value="{{ milestone }}">{{ milestone }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="p-form__group row">
-                    <div class="col-4">
-                        <label for="merge-assignee" class="p-form__label">Assignee</label>
-                    </div>
-                    <div class="col-8">
-                        <div class="p-form__control">
-                            <select id="merge-assignee" name="assignee">
-                                <option value="">Unassigned</option>
-                                {% for assignee in assignees %}
-                                    {% if assignee != "UNASSIGNED" %}
-                                <option value="{{ assignee }}">{{ assignee }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="merge-assignee" class="p-form__label">Assignee</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    <select id="merge-assignee" name="assignee">
+                                        <option value="">Unassigned</option>
+                                        {% for assignee in assignees %}
+                                            {% if assignee != "UNASSIGNED" %}
+                                        <option value="{{ assignee }}">{{ assignee }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="p-button--positive u-float-right">Create merge</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="p-form__group row">
-                    <fieldset>
-                        <legend class="is-required">Type</legend>
-                        <label class="p-radio">
-                            <input type="radio" class="p-radio__input" checked="" name="typeRadio" aria-labelledby="typeMerge">
-                            <span class="p-radio__label" id="typeMerge">Merge</span>
-                        </label>
-                        <label class="p-radio">
-                            <input type="radio" class="p-radio__input" name="typeRadio" aria-labelledby="typeBackport">
-                            <span class="p-radio__label" id="typeBackport">Backport</span>
-                        </label>
-                    </fieldset>
+                <div tabindex="0" role="tabpanel" id="backport-tab-panel" aria-labelledby="backport-tab-button" hidden="hidden">
+                    <form class="p-form p-form--stacked" id="create-backport-form">
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="backport-package" class="p-form__label is-required">Package Name</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    <input type="text" id="backport-package" name="package" required="">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="backport-milestone" class="p-form__label">Milestone</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    <select id="backport-milestone" name="milestone">
+                                        <option value="">None</option>
+                                        {% for milestone in milestones %}
+                                            {% if milestone != "TBD" %}
+                                        <option value="{{ milestone }}">{{ milestone }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-form__group row">
+                            <div class="col-4">
+                                <label for="backport-assignee" class="p-form__label">Assignee</label>
+                            </div>
+                            <div class="col-8">
+                                <div class="p-form__control">
+                                    <select id="backport-assignee" name="assignee">
+                                        <option value="">Unassigned</option>
+                                        {% for assignee in assignees %}
+                                            {% if assignee != "UNASSIGNED" %}
+                                        <option value="{{ assignee }}">{{ assignee }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="p-button--positive u-float-right">Create backport</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <button type="submit" class="p-button--positive u-float-right">Create merge</button>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </aside>
