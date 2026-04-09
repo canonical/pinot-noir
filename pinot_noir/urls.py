@@ -18,10 +18,21 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.views.generic import RedirectView
+from launchpad import views as launchpad_views
 from merges_schedule import views as merges_schedule_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", RedirectView.as_view(url="/merges-schedule", permanent=False), name="root-redirect"),
     path("merges-schedule", merges_schedule_views.index, name="merges-schedule"),
+    path(
+        "launchpad/mergebug/<str:package_name>",
+        launchpad_views.file_merge_bug_redirect,
+        name="launchpad-mergebug",
+    ),
+    path(
+        "launchpad/backportbug/<str:package_name>",
+        launchpad_views.file_backport_bug_redirect,
+        name="launchpad-backportbug",
+    ),
 ]

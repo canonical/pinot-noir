@@ -74,12 +74,36 @@ document.addEventListener('DOMContentLoaded', function() {
         document.activeElement.blur();
     });
 
-    // Close panel when form is submitted
-    var form = document.getElementById('create-merge-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
+    // Go to LP bug creation page on submit.
+    var createMergeForm = document.getElementById('create-merge-form');
+    if (createMergeForm) {
+        createMergeForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            // TODO: Open lp link with additional pre-defined query options
+            var packageInput = document.getElementById('merge-package');
+            if (!packageInput || !packageInput.value.trim()) {
+                createMergeForm.reportValidity();
+                return;
+            }
+
+            var packageName = packageInput.value.trim();
+            var fileBugPath = '/launchpad/mergebug/' + encodeURIComponent(packageName);
+            window.open(fileBugPath, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    var createBackportForm = document.getElementById('create-backport-form');
+    if (createBackportForm) {
+        createBackportForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var packageInput = document.getElementById('backport-package');
+            if (!packageInput || !packageInput.value.trim()) {
+                createBackportForm.reportValidity();
+                return;
+            }
+
+            var packageName = packageInput.value.trim();
+            var fileBugPath = '/launchpad/backportbug/' + encodeURIComponent(packageName);
+            window.open(fileBugPath, '_blank', 'noopener,noreferrer');
         });
     }
 });
