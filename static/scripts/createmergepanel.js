@@ -27,6 +27,31 @@ function setActiveTab(tab, tabs) {
     });
 }
 
+/**
+ * Send form data to the Launchpad link creation API then open as new tab.
+ * @param {HTMLFormElement} form The form with bug data to send.
+ * @param {string} bugType The type of bug to create.
+ */
+function sendNewBugForm(form, bugType) {
+    const formData = new FormData(form);
+    try {
+        fetch('/launchpad/bug/new/' + bugType, {
+            method: 'POST',
+            body: formData,
+        }).then(response => {
+            if (!response.ok) {
+                console.log('Launchpad bug link generation failed:', response.statusText);
+            } else {
+                response.text().then(url => {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Error forwarding bug data:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var aside = document.querySelector('.l-aside');
     var asideOpenBtn = document.querySelector('.js-aside-open');
@@ -79,15 +104,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (createMergeForm) {
         createMergeForm.addEventListener('submit', function(e) {
             e.preventDefault();
+
             var packageInput = document.getElementById('merge-package');
             if (!packageInput || !packageInput.value.trim()) {
                 createMergeForm.reportValidity();
                 return;
             }
-
-            var packageName = packageInput.value.trim();
-            var fileBugPath = '/launchpad/mergebug/' + encodeURIComponent(packageName);
-            window.open(fileBugPath, '_blank', 'noopener,noreferrer');
+            sendNewBugForm(createMergeForm, 'merge');
         });
     }
 
@@ -95,15 +118,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (createBackportForm) {
         createBackportForm.addEventListener('submit', function(e) {
             e.preventDefault();
+
             var packageInput = document.getElementById('backport-package');
             if (!packageInput || !packageInput.value.trim()) {
                 createBackportForm.reportValidity();
                 return;
             }
-
-            var packageName = packageInput.value.trim();
-            var fileBugPath = '/launchpad/backportbug/' + encodeURIComponent(packageName);
-            window.open(fileBugPath, '_blank', 'noopener,noreferrer');
+            sendNewBugForm(createBackportForm, 'backport');
         });
     }
 });

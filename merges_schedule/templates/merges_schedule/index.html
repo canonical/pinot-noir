@@ -143,6 +143,7 @@
                 </div>
                 <div tabindex="0" role="tabpanel" id="merge-tab-panel" aria-labelledby="merge-tab-button">
                     <form class="p-form p-form--stacked" id="create-merge-form">
+                        {% csrf_token %}
                         <div class="p-form__group row">
                             <div class="col-4">
                                 <label for="merge-package" class="p-form__label is-required">Package Name</label>
@@ -196,6 +197,7 @@
                 </div>
                 <div tabindex="0" role="tabpanel" id="backport-tab-panel" aria-labelledby="backport-tab-button" hidden="hidden">
                     <form class="p-form p-form--stacked" id="create-backport-form">
+                        {% csrf_token %}
                         <div class="p-form__group row">
                             <div class="col-4">
                                 <label for="backport-package" class="p-form__label is-required">Package Name</label>

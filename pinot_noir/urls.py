@@ -26,13 +26,8 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/merges-schedule", permanent=False), name="root-redirect"),
     path("merges-schedule", merges_schedule_views.index, name="merges-schedule"),
     path(
-        "launchpad/mergebug/<str:package_name>",
-        launchpad_views.file_merge_bug_redirect,
+        "launchpad/bug/new/<str:bug_type>",
+        launchpad_views.new_bug,
         name="launchpad-mergebug",
-    ),
-    path(
-        "launchpad/backportbug/<str:package_name>",
-        launchpad_views.file_backport_bug_redirect,
-        name="launchpad-backportbug",
     ),
 ]
