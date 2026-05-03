@@ -70,15 +70,19 @@ document.addEventListener('DOMContentLoaded', function () {
             columnIndexMap[th.textContent.trim().toLowerCase()] = i;
         });
 
+        var expectedColumnCount = tableHead.querySelectorAll('th').length;
         var mergeRows = [].slice.call(tableBody.querySelectorAll('tr')).filter(function(row) {
-            return row.children.length === 5;
+            return !row.classList.contains('js-no-filter-results') &&
+                   row.querySelectorAll('th, td').length === expectedColumnCount;
         });
 
-        var activeFilters = {
-            milestone: new Set(),
-            status: new Set(),
-            assignee: new Set()
-        };
+        var activeFilters = {};
+        chips.forEach(function(chip) {
+            var filterType = chip.getAttribute('data-filter-type');
+            if (filterType && !activeFilters[filterType]) {
+                activeFilters[filterType] = new Set();
+            }
+        });
 
         var selectedChipsContainer = pattern.querySelector('.p-search-and-filter__selected-chips');
         var noResultsRow = tableBody.querySelector('.js-no-filter-results');

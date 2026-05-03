@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}<title>{{ title|default:'Reviews' }}</title>{% endblock %}
+
+{% block includes %}
+<script src="{% static 'scripts/tablesorting.js' %}"></script>
+<script src="{% static 'scripts/searchandfilter.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<main id="main-content" class="l-main">
+    <div class="p-panel">
+        <div class="p-panel__header">
+            <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
+
+            <div class="p-search-and-filter u-no-padding--bottom" style="width: 35vw; height: 100%; padding-top: 1rem;">
+                <div class="p-search-and-filter__search-container" aria-expanded="false" data-active="false" data-empty="true">
+                    <div class="p-search-and-filter__selected-chips"></div>
+                    <form class="p-search-and-filter__box" data-overflowing="false" onsubmit="return false;">
+                        <label class="u-off-screen" for="search">Search and filter</label>
+                        <input autocomplete="off" class="p-search-and-filter__input" id="search" name="search" placeholder="Search and filter" type="search" value="">
+                        <button alt="search" class="p-search-and-filter__search-button" type="submit">Search</button>
+                    </form>
+                </div>
+                <div class="p-search-and-filter__panel" aria-hidden="true">
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Release</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for release in releases %}
+                            <button type="button" class="p-chip" data-filter-type="release" data-filter-value="{{ release }}"><span class="p-chip__lead">RELEASE</span><span class="p-chip__value">{{ release }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Status</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for status in statuses %}
+                            <button type="button" class="p-chip" data-filter-type="status" data-filter-value="{{ status }}"><span class="p-chip__lead">STATUS</span><span class="p-chip__value">{{ status }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Reviewer</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for reviewer in reviewers %}
+                            <button type="button" class="p-chip" data-filter-type="reviewer" data-filter-value="{{ reviewer }}"><span class="p-chip__lead">REVIEWER</span><span class="p-chip__value">{{ reviewer }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="p-filter-panel-section">
+                        <h5 class="p-filter-panel-section__heading">Submitter</h5>
+                        <div class="p-filter-panel-section__chips" aria-expanded="false">
+                            {% for submitter in submitters %}
+                            <button type="button" class="p-chip" data-filter-type="submitter" data-filter-value="{{ submitter }}"><span class="p-chip__lead">SUBMITTER</span><span class="p-chip__value">{{ submitter }}</span></button><!--
+                            -->{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="p-panel__content">
+            <div class="u-fixed-width">
+                <table aria-label="Reviews Status">
+                    <thead>
+                        <tr>
+                            <th aria-sort="none">Package</th>
+                            <th aria-sort="none">Release</th>
+                            <th aria-sort="none">Reviewer</th>
+                            <th aria-sort="none">Submitter</th>
+                            <th class="u-align--center" aria-sort="none">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for review in reviews %}
+                        <tr>
+                            <th class="u-truncate">
+                                <a href="{{ review.mp_url }}" target="_blank" rel="noopener noreferrer">{{ review.package }}</a>
+                            </th>
+                            <td>{% if review.release_version %}{{ review.release_version }}{% else %}&mdash;{% endif %}</td>
+                            <td>
+                                {% if review.reviewer_user %}
+                                    {% if review.reviewer_user.email_md5 %}
+                                        <img src="{{ review.reviewer_user.gravatar_url }}" alt="{{ review.reviewer_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                                    {% endif %}
+                                    <a href="https://launchpad.net/~{{ review.reviewer_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer_user.username }}</a>
+                                {% elif review.reviewer %}
+                                    <a href="https://launchpad.net/~{{ review.reviewer|lower }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer }}</a>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if review.submitter_user %}
+                                    {% if review.submitter_user.email_md5 %}
+                                        <img src="{{ review.submitter_user.gravatar_url }}" alt="{{ review.submitter_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                                    {% endif %}
+                                    <a href="https://launchpad.net/~{{ review.submitter_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.submitter_user.username }}</a>
+                                {% elif review.submitter %}
+                                    <a href="https://launchpad.net/~{{ review.submitter|lower }}" target="_blank" rel="noopener noreferrer">{{ review.submitter }}</a>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            <td class="u-align--center">
+                                {% if review.status == "Approved" %}
+                                    <span class="p-chip--positive is-inline">{{ review.status }}</span>
+                                {% elif review.status == "Needs Review" %}
+                                    <span class="p-chip--caution is-inline">{{ review.status }}</span>
+                                {% elif review.status == "Under Review" %}
+                                    <span class="p-chip--information is-inline">{{ review.status }}</span>
+                                {% elif review.status == "Needs Fixing" or review.status == "Needs Information" %}
+                                    <span class="p-chip--negative is-inline">{{ review.status }}</span>
+                                {% else %}
+                                    <span class="p-chip is-inline">{{ review.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">No reviews scheduled.</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="js-no-filter-results" hidden>
+                            <td colspan="5">No matching reviews found.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
