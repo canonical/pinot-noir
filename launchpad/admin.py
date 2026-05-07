@@ -1,14 +1,17 @@
+import hashlib
+
 from django import forms
 from django.contrib import admin
 from django.utils.safestring import mark_safe
-import hashlib
 
 from .models import LPUser, UbuntuRelease
 
 
 class LPUserAdminForm(forms.ModelForm):
     # Admin-only helper field: accept an email and compute email_md5 on save
-    email = forms.EmailField(required=False, help_text="Optional: enter an email to compute MD5 for Gravatar")
+    email = forms.EmailField(
+        required=False, help_text="Optional: enter an email to compute MD5 for Gravatar"
+    )
 
     class Meta:
         model = LPUser
@@ -37,7 +40,7 @@ class LPUserAdmin(admin.ModelAdmin):
         if not obj or not obj.email_md5:
             return ""
         url = f"https://www.gravatar.com/avatar/{obj.email_md5}?s=48&d=identicon"
-        return mark_safe(f"<img src=\"{url}\" alt=\"{obj.username}\" width=\"48\" height=\"48\" />")
+        return mark_safe(f'<img src="{url}" alt="{obj.username}" width="48" height="48" />')
 
     gravatar_preview.short_description = "Gravatar"
 

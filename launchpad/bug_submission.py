@@ -1,5 +1,7 @@
-from django.http import QueryDict
 from urllib.parse import quote
+
+from django.http import QueryDict
+
 from launchpad.models import UbuntuRelease
 
 

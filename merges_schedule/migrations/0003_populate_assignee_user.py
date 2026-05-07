@@ -13,12 +13,15 @@ def populate_assignee_user(apps, schema_editor):
         username_l = username.lower()
         user, created = LPUser.objects.get_or_create(username=username_l)
         merge.assignee_user = user
-        merge.save(update_fields=["assignee_user"]) 
+        merge.save(update_fields=["assignee_user"])
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [("merges_schedule", "0002_add_assignee_user_fk"), ("launchpad", "0001_initial")]
+    dependencies = [
+        ("merges_schedule", "0002_add_assignee_user_fk"),
+        ("launchpad", "0001_initial"),
+    ]
 
     operations = [
         migrations.RunPython(populate_assignee_user, reverse_code=migrations.RunPython.noop),

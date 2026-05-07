@@ -10,10 +10,10 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='LPUser',
+            name="LPUser",
             fields=[
-                ('username', models.CharField(max_length=100, primary_key=True, serialize=False)),
-                ('email_md5', models.CharField(blank=True, max_length=32, null=True)),
+                ("username", models.CharField(max_length=100, primary_key=True, serialize=False)),
+                ("email_md5", models.CharField(blank=True, max_length=32, null=True)),
             ],
         ),
     ]

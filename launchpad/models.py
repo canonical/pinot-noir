@@ -27,6 +27,7 @@ class LPUser(models.Model):
 
 class UbuntuRelease(models.Model):
     """Ubuntu release model."""
+
     STATUS_DEVEL = "devel"
     STATUS_SUPPORTED = "supported"
     STATUS_EXTENDED_SUPPORT = "esm"

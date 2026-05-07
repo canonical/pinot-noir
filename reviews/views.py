@@ -2,7 +2,6 @@ from django.shortcuts import render
 
 from .models import Review
 
-
 STATUS_ORDER = {
     Review.STATUS_NEEDS_REVIEW: 0,
     Review.STATUS_WORK_IN_PROGRESS: 1,
@@ -33,9 +32,21 @@ def index(request):
     sorted_reviews = sort_reviews_default(reviews)
 
     releases = sorted({r.release_version for r in reviews if r.release_version})
-    reviewers = sorted({(r.reviewer_user.username if r.reviewer_user else (r.reviewer or "UNASSIGNED")) for r in reviews})
-    submitters = sorted({(r.submitter_user.username if r.submitter_user else (r.submitter or "UNASSIGNED")) for r in reviews})
-    statuses = [s for s, _ in sorted(Review.STATUS_CHOICES, key=lambda item: STATUS_ORDER.get(item[0], -1))]
+    reviewers = sorted(
+        {
+            (r.reviewer_user.username if r.reviewer_user else (r.reviewer or "UNASSIGNED"))
+            for r in reviews
+        }
+    )
+    submitters = sorted(
+        {
+            (r.submitter_user.username if r.submitter_user else (r.submitter or "UNASSIGNED"))
+            for r in reviews
+        }
+    )
+    statuses = [
+        s for s, _ in sorted(Review.STATUS_CHOICES, key=lambda item: STATUS_ORDER.get(item[0], -1))
+    ]
 
     context = {
         "title": "Reviews",
