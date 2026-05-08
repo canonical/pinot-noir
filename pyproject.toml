@@ -10,27 +10,16 @@ dependencies = [
 
 [dependency-groups]
 format = [
-    "black>=26.3.1",
-    "isort>=8.0.1",
+    "ruff>=0.15.12",
 ]
 lint = [
     "codespell>=2.4.2",
-    "mypy>=2.0.0",
-    "pylint>=4.0.5",
-    "pyproject-flake8>=7.0.0",
+    "django>=5.2,<6.0",
+    "ty>=0.0.34",
 ]
 
-
-[tool.black]
+[tool.ruff]
 line-length = 99
 
-[tool.flake8]
-max-line-length = 99
-max-doc-length = 99
-
-[tool.isort]
-profile = "black"
-line_length = 99
-
-[tool.pylint]
-max-line-length = 99
+[tool.ruff.lint]
+select = ["E", "F", "I", "PL", "W"]

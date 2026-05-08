@@ -17,7 +17,6 @@ def populate_assignee_user(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("merges_schedule", "0002_add_assignee_user_fk"),
         ("launchpad", "0001_initial"),
