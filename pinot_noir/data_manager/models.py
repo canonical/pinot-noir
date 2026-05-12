@@ -5,6 +5,10 @@ from django.db import models
 class UserTokens(models.Model):
     """Tokens for a Django admin user to access external services."""
 
+    class Meta:
+        verbose_name = "User Tokens"
+        verbose_name_plural = "User Token Groups"
+
     # The associated Django admin user
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
@@ -41,3 +45,9 @@ class BackportBugPackageInfo(models.Model):
     def packages(self) -> list[str]:
         """Return the list of package names."""
         return [name.strip() for name in self.package_names_combined.split(",")]
+
+
+class LPReviewMarkerUser(models.Model):
+    """A launchpad user that, when assigned to a review, makes it appear on the review board."""
+
+    username = models.CharField(max_length=100, primary_key=True)
