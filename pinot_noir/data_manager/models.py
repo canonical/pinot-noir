@@ -18,7 +18,7 @@ class BackportBugPackageInfo(models.Model):
     name = models.CharField(primary_key=True, max_length=200)
 
     # Names of packages separated by commas
-    package_names_combined = models.CharField(primary_key=True, max_length=600)
+    package_names_combined = models.CharField(max_length=600)
 
     # When creating a new merge board, offset the expected milestone by this many months.
     milestone_offset = models.IntegerField(default=0)
