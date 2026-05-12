@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from launchpad.models import UbuntuRelease
+from pinot_noir.launchpad.models import UbuntuRelease
 
 from .models import Merge
 

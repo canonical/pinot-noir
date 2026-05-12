@@ -19,9 +19,9 @@ from django.contrib import admin
 from django.urls import path
 from django.views.generic import RedirectView
 
-from launchpad import views as launchpad_views
-from merges_schedule import views as merges_schedule_views
-from reviews import views as reviews_views
+from pinot_noir.launchpad import views as launchpad_views
+from pinot_noir.merges_schedule import views as merges_schedule_views
+from pinot_noir.reviews import views as reviews_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),

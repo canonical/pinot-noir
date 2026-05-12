@@ -1,6 +1,6 @@
 from django.http import HttpRequest, HttpResponse
 
-from launchpad.bug_submission import BugSubmission
+from .bug_submission import BugSubmission
 
 LAUNCHPAD_UBUNTU_BUG_URL_TEMPLATE = "https://launchpad.net/ubuntu/+source/#package/+filebug"
 

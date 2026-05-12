@@ -30,5 +30,3 @@ class BackportBugPackageInfo(models.Model):
     def packages(self) -> list[str]:
         """Return the list of package names."""
         return [name.strip() for name in self.package_names_combined.split(",")]
-
-

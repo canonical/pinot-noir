@@ -38,9 +38,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Local apps
-    "merges_schedule",
-    "reviews",
-    "launchpad",
+    "pinot_noir.merges_schedule",
+    "pinot_noir.reviews",
+    "pinot_noir.launchpad",
 ]
 
 MIDDLEWARE = [

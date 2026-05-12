@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from launchpad.models import LPUser
+from pinot_noir.launchpad.models import LPUser
 
 from .models import Review
 from .views import sort_reviews_default

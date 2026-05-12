@@ -2,7 +2,7 @@ from urllib.parse import quote
 
 from django.http import QueryDict
 
-from launchpad.models import UbuntuRelease
+from pinot_noir.launchpad.models import UbuntuRelease
 
 
 def get_ubuntu_devel_release_name() -> str:

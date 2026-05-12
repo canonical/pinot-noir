@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 
-class LaunchpadConfig(AppConfig):
+class ReviewsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "launchpad"
+    name = "pinot_noir.reviews"
+    label = "reviews"
