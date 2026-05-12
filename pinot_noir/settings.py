@@ -37,10 +37,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Local apps
+    # Pinot Noir base applications
+    "pinot_noir.launchpad",
+    "pinot_noir.data_manager",
+    # Pinot Noir web page applications
     "pinot_noir.merges_schedule",
     "pinot_noir.reviews",
-    "pinot_noir.launchpad",
 ]
 
 MIDDLEWARE = [
