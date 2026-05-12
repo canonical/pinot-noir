@@ -1,4 +1,15 @@
+from django.contrib.auth.models import User
 from django.db import models
+
+
+class UserTokens(models.Model):
+    """Tokens for a Django admin user to access external services."""
+
+    # The associated Django admin user
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    # Lauchpad API credentials string
+    lp_token = models.CharField(max_length=1000)
 
 
 class MergeBugPackageInfo(models.Model):
