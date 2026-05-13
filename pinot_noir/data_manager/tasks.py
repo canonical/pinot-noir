@@ -14,8 +14,8 @@ REFRESH_INTERVAL_HOURS = 6
 
 # Map Launchpad queue_status values to Review status choices.
 _LP_STATUS_MAP: dict[str, str] = {
-    "Work in Progress": Review.STATUS_WORK_IN_PROGRESS,
-    "Needs Review": Review.STATUS_NEEDS_REVIEW,
+    "Work in progress": Review.STATUS_WORK_IN_PROGRESS,
+    "Needs review": Review.STATUS_NEEDS_REVIEW,
     "Approved": Review.STATUS_APPROVED,
     "Rejected": Review.STATUS_NEEDS_FIXING,
     "Code failed to merge": Review.STATUS_NEEDS_FIXING,
