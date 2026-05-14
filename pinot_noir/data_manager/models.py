@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.sites.models import Site
 from django.db import models
 
 
@@ -33,7 +34,7 @@ class BackportBugPackageInfo(models.Model):
     name = models.CharField(primary_key=True, max_length=200)
 
     # Names of packages separated by commas
-    package_names_combined = models.CharField(max_length=600)
+    package_names_combined = models.CharField(max_length=600, default="")
 
     # When creating a new merge board, offset the expected milestone by this many months.
     milestone_offset = models.IntegerField(default=0)
@@ -51,3 +52,27 @@ class LPReviewMarkerUser(models.Model):
     """A launchpad user that, when assigned to a review, makes it appear on the review board."""
 
     username = models.CharField(max_length=100, primary_key=True)
+
+
+class MergeBugFilterSettings(models.Model):
+    """Sitewide settings defining required merge board bug attributes."""
+
+    # The associated Django site to make this a singleton model
+    site = models.OneToOneField(Site, on_delete=models.CASCADE)
+
+    tags_combined = models.CharField(max_length=600, default="")
+    subscribers_combined = models.CharField(max_length=600, default="")
+
+    class Meta:
+        verbose_name = "Merge Bug Filter Setting"
+        verbose_name_plural = "Merge Bug Filter Settings"
+
+    @property
+    def tags(self) -> list[str]:
+        """Return the list of tags."""
+        return [tag.strip() for tag in self.tags_combined.split(",") if tag.strip()]
+
+    @property
+    def subscribers(self) -> list[str]:
+        """Return the list of subscribers."""
+        return [sub.strip() for sub in self.subscribers_combined.split(",") if sub.strip()]
