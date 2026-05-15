@@ -76,3 +76,11 @@ class MergeBugFilterSettings(models.Model):
     def subscribers(self) -> list[str]:
         """Return the list of subscribers."""
         return [sub.strip() for sub in self.subscribers_combined.split(",") if sub.strip()]
+
+
+class BackportBugFilterSettings(MergeBugFilterSettings):
+    """Sitewide settings defining required backport bug attributes."""
+
+    class Meta:
+        verbose_name = "Backport Bug Filter Setting"
+        verbose_name_plural = "Backport Bug Filter Settings"
