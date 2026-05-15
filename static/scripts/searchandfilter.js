@@ -70,6 +70,8 @@ document.addEventListener('DOMContentLoaded', function () {
             columnIndexMap[th.textContent.trim().toLowerCase()] = i;
         });
 
+        var statusColumnIndex = columnIndexMap['status'];
+
         var expectedColumnCount = tableHead.querySelectorAll('th').length;
         var mergeRows = [].slice.call(tableBody.querySelectorAll('tr')).filter(function(row) {
             return !row.classList.contains('js-no-filter-results') &&
@@ -90,21 +92,30 @@ document.addEventListener('DOMContentLoaded', function () {
         // Show or hide table rows based on selected chips in search and filter panel.
         function applyChipFilters() {
             var visibleCount = 0;
+            var statusFilterActive = activeFilters['status'] && activeFilters['status'].size > 0;
 
             mergeRows.forEach(function(row) {
                 let isVisible = true;
 
-                Object.keys(activeFilters).forEach(function(filterType) {
-                    let selectedValues = activeFilters[filterType];
-
-                    if (selectedValues.size > 0) {
-                        let rowValue = getRowFilterValue(row, columnIndexMap[filterType]);
-
-                        if (!selectedValues.has(rowValue)) {
-                            isVisible = false;
-                        }
+                if (!statusFilterActive && statusColumnIndex !== undefined) {
+                    if (getRowFilterValue(row, statusColumnIndex) === 'done') {
+                        isVisible = false;
                     }
-                });
+                }
+
+                if (isVisible) {
+                    Object.keys(activeFilters).forEach(function(filterType) {
+                        let selectedValues = activeFilters[filterType];
+
+                        if (selectedValues.size > 0) {
+                            let rowValue = getRowFilterValue(row, columnIndexMap[filterType]);
+
+                            if (!selectedValues.has(rowValue)) {
+                                isVisible = false;
+                            }
+                        }
+                    });
+                }
 
                 row.hidden = !isVisible;
 
@@ -294,5 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
         panel.addEventListener('focusout', function() {
             schedulePanelCloseCheck();
         });
+
+        applyChipFilters();
     });
 });
