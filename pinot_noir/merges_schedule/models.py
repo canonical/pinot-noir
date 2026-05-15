@@ -27,7 +27,7 @@ class Merge(models.Model):
     # Launchpad bug number - primary key
     lp_bug = models.PositiveIntegerField(primary_key=True)
 
-    # Name of package to update
+    # Name of package or package group to update
     package = models.CharField(max_length=200)
 
     # Type of merge - merge, sync, backport, etc.
