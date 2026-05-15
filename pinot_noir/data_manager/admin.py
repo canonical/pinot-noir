@@ -23,7 +23,7 @@ class LPReviewMarkerUserAdmin(admin.ModelAdmin):
 
 @admin.register(MergeBugFilterSettings)
 class MergeBugFilterSettingsAdmin(admin.ModelAdmin):
-    list_display = ("site", "tags_combined", "subscribers_combined")
+    list_display = ("tags_combined", "subscribers_combined")
     fieldsets = (
         (
             "Bug filters",
@@ -37,14 +37,20 @@ class MergeBugFilterSettingsAdmin(admin.ModelAdmin):
         ),
     )
 
+    def get_queryset(self, request):
+        return (
+            super().get_queryset(request).filter(settings_type=MergeBugFilterSettings.TYPE_MERGE)
+        )
+
     def save_model(self, request, obj, form, change):
         obj.site = Site.objects.get_current()
+        obj.settings_type = MergeBugFilterSettings.TYPE_MERGE
         super().save_model(request, obj, form, change)
 
 
 @admin.register(BackportBugFilterSettings)
 class BackportBugFilterSettingsAdmin(admin.ModelAdmin):
-    list_display = ("site", "tags_combined", "subscribers_combined")
+    list_display = ("tags_combined", "subscribers_combined")
     fieldsets = (
         (
             "Bug filters",
@@ -60,4 +66,5 @@ class BackportBugFilterSettingsAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         obj.site = Site.objects.get_current()
+        obj.settings_type = MergeBugFilterSettings.TYPE_BACKPORT
         super().save_model(request, obj, form, change)

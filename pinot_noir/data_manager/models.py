@@ -57,8 +57,19 @@ class LPReviewMarkerUser(models.Model):
 class MergeBugFilterSettings(models.Model):
     """Sitewide settings defining required merge board bug attributes."""
 
-    # The associated Django site to make this a singleton model
-    site = models.OneToOneField(Site, on_delete=models.CASCADE)
+    TYPE_MERGE = "merge"
+    TYPE_BACKPORT = "backport"
+
+    TYPE_CHOICES = [
+        (TYPE_MERGE, "merge"),
+        (TYPE_BACKPORT, "backport"),
+    ]
+
+    # The associated Django site
+    site = models.ForeignKey(Site, on_delete=models.CASCADE)
+
+    # Whether these settings apply to merge bugs or backport bugs
+    settings_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_MERGE)
 
     tags_combined = models.CharField(max_length=600, default="")
     subscribers_combined = models.CharField(max_length=600, default="")
@@ -66,6 +77,12 @@ class MergeBugFilterSettings(models.Model):
     class Meta:
         verbose_name = "Merge Bug Filter Setting"
         verbose_name_plural = "Merge Bug Filter Settings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "settings_type"],
+                name="unique_bug_filter_settings_per_site_and_type",
+            )
+        ]
 
     @property
     def tags(self) -> list[str]:
@@ -78,9 +95,17 @@ class MergeBugFilterSettings(models.Model):
         return [sub.strip() for sub in self.subscribers_combined.split(",") if sub.strip()]
 
 
+class BackportBugFilterSettingsManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(settings_type=MergeBugFilterSettings.TYPE_BACKPORT)
+
+
 class BackportBugFilterSettings(MergeBugFilterSettings):
-    """Sitewide settings defining required backport bug attributes."""
+    """Proxy for backport bug filter settings."""
+
+    objects = BackportBugFilterSettingsManager()
 
     class Meta:
+        proxy = True
         verbose_name = "Backport Bug Filter Setting"
         verbose_name_plural = "Backport Bug Filter Settings"

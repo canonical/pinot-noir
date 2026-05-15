@@ -192,7 +192,7 @@ def refresh_merge_schedule(release_adjective: str) -> None:
 
     valid_milestones = _milestones_for_release(release.version)
     merge_settings = MergeBugFilterSettings.objects.filter(
-        backportbugfiltersettings__isnull=True
+        settings_type=MergeBugFilterSettings.TYPE_MERGE
     ).first()
     backport_settings = BackportBugFilterSettings.objects.first()
 
