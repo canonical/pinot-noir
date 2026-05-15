@@ -8,7 +8,7 @@ dependencies = [
     "django>=5.2,<6.0",
     "django-tasks>=0.12.0",
     "django-tasks-db>=0.12.0",
-    "ubq>=0.4.1",
+    "ubq>=0.4.2",
 ]
 
 [dependency-groups]
