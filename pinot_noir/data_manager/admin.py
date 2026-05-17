@@ -3,6 +3,7 @@ from django.contrib.sites.models import Site
 
 from .models import (
     BackportBugFilterSettings,
+    BackportBugPackageInfo,
     LPReviewMarkerUser,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
@@ -20,6 +21,11 @@ class UserTokensAdmin(admin.ModelAdmin):
 class MergeBugPackageInfoAdmin(admin.ModelAdmin):
     list_display = ("package", "milestone_offset")
     search_fields = ("package",)
+
+@admin.register(BackportBugPackageInfo)
+class BackportBugPackageInfoAdmin(admin.ModelAdmin):
+    list_display = ("name", "milestone_offset", "package_names_combined")
+    search_fields = ("name","package_names_combined")
 
 
 @admin.register(LPReviewMarkerUser)

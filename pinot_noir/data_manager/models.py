@@ -26,6 +26,10 @@ class MergeBugPackageInfo(models.Model):
     # When creating a new merge board, offset the expected milestone by this many months.
     milestone_offset = models.IntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Merge Bug Package Info"
+        verbose_name_plural = "Merge Bug Package Info Sets"
+
 
 class BackportBugPackageInfo(models.Model):
     """Information about a package or package group for creating a backport bug."""
@@ -41,6 +45,10 @@ class BackportBugPackageInfo(models.Model):
 
     # Description template for the bug
     description_template = models.TextField(default="")
+
+    class Meta:
+        verbose_name = "Backport Bug Package Info"
+        verbose_name_plural = "Backport Bug Package Info Sets"
 
     @property
     def packages(self) -> list[str]:
