@@ -12,6 +12,7 @@ from pinot_noir.data_manager.models import (
     BackportBugPackageInfo,
     LPReviewMarkerUser,
     MergeBugFilterSettings,
+    MergeBugPackageInfo,
 )
 from pinot_noir.launchpad.models import LPUser, UbuntuRelease
 from pinot_noir.merges_schedule.models import Merge
@@ -275,3 +276,22 @@ def refresh_reviews() -> None:
     Review.objects.bulk_create(new_reviews)
 
     refresh_reviews.enqueue(run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
+
+
+def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
+    """Sync MergeBugPackageInfo rows to match a set of package names.
+
+    Removes packages not present in *packages* and creates missing ones with
+    ``milestone_offset=0``.  Returns ``(added, removed)`` counts.
+    """
+    existing = set(MergeBugPackageInfo.objects.values_list("package", flat=True))
+
+    to_add = packages - existing
+    to_remove = existing - packages
+
+    MergeBugPackageInfo.objects.filter(package__in=to_remove).delete()
+    MergeBugPackageInfo.objects.bulk_create(
+        [MergeBugPackageInfo(package=pkg, milestone_offset=0) for pkg in sorted(to_add)]
+    )
+
+    return len(to_add), len(to_remove)

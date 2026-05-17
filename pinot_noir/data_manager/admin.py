@@ -5,6 +5,7 @@ from .models import (
     BackportBugFilterSettings,
     LPReviewMarkerUser,
     MergeBugFilterSettings,
+    MergeBugPackageInfo,
     UserTokens,
 )
 
@@ -13,6 +14,12 @@ from .models import (
 class UserTokensAdmin(admin.ModelAdmin):
     list_display = ("user", "lp_token")
     search_fields = ("user__username",)
+
+
+@admin.register(MergeBugPackageInfo)
+class MergeBugPackageInfoAdmin(admin.ModelAdmin):
+    list_display = ("package", "milestone_offset")
+    search_fields = ("package",)
 
 
 @admin.register(LPReviewMarkerUser)
