@@ -1,5 +1,6 @@
 """Helper functions and constants for data_manager tasks."""
 
+from debian.debian_support import Version
 from ubq import QueryService
 from ubq.models import BugRecord, BugSearchRecord
 
@@ -45,7 +46,24 @@ class MergePackageVersionInfo:
         self._debian_unstable_version: str = ""
         self._debian_experimental_version: str = ""
 
+        self._use_proposed: bool = False
+        self._use_experimental: bool = False
         self._ready_for_merge: bool = False
+
+    def __str__(self) -> str:
+        """String representation for description entry."""
+        full_str = ""
+        if self._use_proposed:
+            full_str += f"Ubuntu Proposed: {self._proposed_version}\n"
+        else:
+            full_str += f"Ubuntu: {self._release_version}\n"
+
+        if self._use_experimental:
+            full_str += f"Debian Experimental: {self._debian_experimental_version}\n"
+
+        full_str += f"Debian Unstable: {self._debian_unstable_version}\n"
+
+        return full_str
 
     def _get_version_string(self, series: str, pocket: str | None = None) -> str:
         """Get package version string for series and pocket."""
@@ -56,12 +74,51 @@ class MergePackageVersionInfo:
             return package_version.version_string
         return ""
 
+    def _determine_versions_to_use(self) -> None:
+        """Check if merge is ready and what versions should be used."""
+        if self._proposed_version == "":
+            proposed = Version("0")
+        else:
+            proposed = Version(self._proposed_version)
+
+        if self._release_version == "":
+            release = Version("0")
+        else:
+            release = Version(self._release_version)
+
+        if self._debian_unstable_version == "":
+            unstable = Version("0")
+        else:
+            unstable = Version(self._debian_unstable_version)
+
+        if self._debian_experimental_version == "":
+            experimental = Version("0")
+        else:
+            experimental = Version(self._debian_experimental_version)
+
+        self._use_proposed = proposed > release
+        self._use_experimental = experimental > unstable
+
+        self._ready_for_merge = False
+
+        ubuntu_version = proposed if self._use_proposed else release
+        debian_version = experimental if self._use_experimental else unstable
+
+        if debian_version > ubuntu_version:
+            self._ready_for_merge = True
+
     def refresh_versions(self) -> None:
         """Refresh all version strings from Launchpad."""
         self._proposed_version = self._get_version_string(self._devel_series, pocket="Proposed")
         self._release_version = self._get_version_string(self._devel_series, pocket="Release")
         self._debian_unstable_version = self._get_version_string("debian-unstable")
         self._debian_experimental_version = self._get_version_string("debian-experimental")
+
+        self._determine_versions_to_use()
+
+    def ready_for_merge(self) -> bool:
+        """Return True if the package is ready for merge."""
+        return self._ready_for_merge
 
 
 def package_from_url(web_url: str) -> str:
