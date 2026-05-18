@@ -2,10 +2,14 @@
 
 from debian.debian_support import Version
 from ubq import QueryService
-from ubq.models import BugRecord, BugSearchRecord
+from ubq.models import BugRecord, BugSearchRecord, BugSubmissionRecord, UserRecord
 
-from pinot_noir.data_manager.models import BackportBugPackageInfo, MergeBugFilterSettings
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.data_manager.models import (
+    BackportBugPackageInfo,
+    MergeBugFilterSettings,
+    MergeBugPackageInfo,
+)
+from pinot_noir.launchpad.models import LPUser, UbuntuRelease
 from pinot_noir.merges_schedule.models import Merge
 from pinot_noir.reviews.models import Review
 
@@ -52,7 +56,10 @@ class MergePackageVersionInfo:
 
     def __str__(self) -> str:
         """String representation for description entry."""
-        full_str = ""
+        full_str = (
+            f"A new release of {self._package_name} is available for merging from Debian.\n\n"
+        )
+
         if self._use_proposed:
             full_str += f"Ubuntu Proposed: {self._proposed_version}\n"
         else:
@@ -119,6 +126,10 @@ class MergePackageVersionInfo:
     def ready_for_merge(self) -> bool:
         """Return True if the package is ready for merge."""
         return self._ready_for_merge
+
+    def get_package_name(self) -> str:
+        """Return the package name."""
+        return self._package_name
 
 
 def package_from_url(web_url: str) -> str:
@@ -250,3 +261,42 @@ def merge_from_bug(
         milestone=milestone,
         status=status,
     )
+
+
+def prepare_merge_bug(
+    queryService: QueryService,
+    ubuntu_release: UbuntuRelease,
+    package_settings: MergeBugPackageInfo,
+    filter_settings: MergeBugFilterSettings,
+) -> BugSubmissionRecord | None:
+    """Prepare a bug submission for a merge if one is needed."""
+    # Package already has merge bug, skip
+    if package_settings.bug_filed_this_cycle:
+        return None
+
+    # Determine milestone by offset
+    possible_milestones = sorted(milestones_for_release(ubuntu_release.version))
+
+    if package_settings.milestone_offset < len(possible_milestones):
+        use_milestone = f"ubuntu-{possible_milestones[package_settings.milestone_offset]}"
+    else:
+        use_milestone = f"ubuntu-{possible_milestones[0]}"
+
+    # Check Debian and Ubuntu versions
+    new_merge_version_info = MergePackageVersionInfo(
+        package_settings.package, ubuntu_release, queryService
+    )
+
+    new_merge_version_info.refresh_versions()
+    if not new_merge_version_info.ready_for_merge():
+        return None
+
+    bug_submission = BugSubmissionRecord(
+        provider_name="launchpad",
+        title=f"Merge {package_settings.package} from Debian for {ubuntu_release.adjective} cycle",
+        description=str(new_merge_version_info),
+        tags=filter_settings.tags,
+        milestone=use_milestone,
+        subscribers=[UserRecord(username=sub) for sub in filter_settings.subscribers],
+    )
+    return bug_submission
