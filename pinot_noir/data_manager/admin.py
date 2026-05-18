@@ -19,13 +19,14 @@ class UserTokensAdmin(admin.ModelAdmin):
 
 @admin.register(MergeBugPackageInfo)
 class MergeBugPackageInfoAdmin(admin.ModelAdmin):
-    list_display = ("package", "milestone_offset")
+    list_display = ("package", "milestone_offset", "bug_filed_this_cycle")
     search_fields = ("package",)
+
 
 @admin.register(BackportBugPackageInfo)
 class BackportBugPackageInfoAdmin(admin.ModelAdmin):
-    list_display = ("name", "milestone_offset", "package_names_combined")
-    search_fields = ("name","package_names_combined")
+    list_display = ("name", "milestone_offset", "package_names_combined", "bug_filed_this_cycle")
+    search_fields = ("name", "package_names_combined")
 
 
 @admin.register(LPReviewMarkerUser)
