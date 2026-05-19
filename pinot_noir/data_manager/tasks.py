@@ -1,10 +1,14 @@
 """Periodic data-refresh tasks for the data_manager application."""
 
 from datetime import timedelta
+from typing import Any
 
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django_tasks import task
 from ubq import QueryService
+from ubq.models import BugSubmissionRecord, ProviderCredentials, UserRecord
 
 from pinot_noir.data_manager.helpers import (
     LP_STATUS_MAP,
@@ -12,6 +16,7 @@ from pinot_noir.data_manager.helpers import (
     merge_from_bug,
     milestones_for_release,
     package_from_url,
+    prepare_merge_bugs_for_all_packages,
     release_from_branch,
 )
 from pinot_noir.data_manager.models import (
@@ -19,12 +24,115 @@ from pinot_noir.data_manager.models import (
     LPReviewMarkerUser,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
+    UserTokens,
 )
 from pinot_noir.launchpad.models import LPUser, UbuntuRelease
 from pinot_noir.merges_schedule.models import Merge
 from pinot_noir.reviews.models import Review
 
 REFRESH_INTERVAL_HOURS = 6
+
+
+def _get_devel_release() -> UbuntuRelease:
+    release = UbuntuRelease.objects.filter(status=UbuntuRelease.STATUS_DEVEL).first()
+    if release is None:
+        raise ObjectDoesNotExist("No Ubuntu development release found.")
+    return release
+
+
+def _get_launchpad_service_for_user(user: User) -> QueryService:
+    tokens = UserTokens.objects.filter(user=user).first()
+    if tokens is None or not tokens.lp_token:
+        raise ObjectDoesNotExist(f"No Launchpad token configured for user '{user.username}'.")
+
+    service = QueryService()
+    service.login(
+        provider_name="launchpad",
+        credentials=ProviderCredentials(token=tokens.lp_token),
+    )
+    return service
+
+
+def bug_submission_to_json_dict(submission: BugSubmissionRecord) -> dict[str, Any]:
+    """Convert a BugSubmissionRecord into a JSON-safe dictionary."""
+    return {
+        "provider_name": submission.provider_name,
+        "title": submission.title,
+        "package_names": submission.package_names,
+        "description": submission.description,
+        "importance": submission.importance,
+        "status": submission.status,
+        "tags": submission.tags,
+        "subscribers": [sub.username for sub in submission.subscribers],
+        "assignee": submission.assignee.username if submission.assignee else None,
+        "private": submission.private,
+        "milestone": submission.milestone,
+    }
+
+
+def bug_submission_from_json_dict(data: dict[str, Any]) -> BugSubmissionRecord:
+    """Build a BugSubmissionRecord from JSON-loaded dictionary data."""
+    subscribers = [UserRecord(username=username) for username in data.get("subscribers", [])]
+    assignee_name = data.get("assignee")
+    assignee = UserRecord(username=assignee_name) if assignee_name else None
+
+    return BugSubmissionRecord(
+        provider_name=data["provider_name"],
+        title=data["title"],
+        package_names=data.get("package_names", []),
+        description=data.get("description"),
+        importance=data.get("importance"),
+        status=data.get("status"),
+        tags=data.get("tags", []),
+        subscribers=subscribers,
+        assignee=assignee,
+        private=bool(data.get("private", False)),
+        milestone=data.get("milestone"),
+    )
+
+
+def prepare_merge_bug_submissions_for_user(
+    user: User,
+    release_adjective: str | None = None,
+) -> list[tuple[str, BugSubmissionRecord]]:
+    """Prepare merge bug submissions for all packages using a user's LP token."""
+    if release_adjective:
+        ubuntu_release = UbuntuRelease.objects.get(adjective=release_adjective)
+    else:
+        ubuntu_release = _get_devel_release()
+
+    filter_settings = MergeBugFilterSettings.objects.filter(
+        settings_type=MergeBugFilterSettings.TYPE_MERGE
+    ).first()
+    if filter_settings is None:
+        raise ObjectDoesNotExist("No merge bug filter settings found.")
+
+    service = _get_launchpad_service_for_user(user)
+    return prepare_merge_bugs_for_all_packages(service, ubuntu_release, filter_settings)
+
+
+def submit_prepared_merge_bug_submissions_for_user(
+    user: User,
+    submissions: list[tuple[str, BugSubmissionRecord]],
+) -> tuple[int, int]:
+    """Submit prepared merge bug submissions and mark package rows as filed.
+
+    Returns ``(submitted_count, failed_count)``.
+    """
+    service = _get_launchpad_service_for_user(user)
+
+    submitted_count = 0
+    failed_count = 0
+    for package_name, submission in submissions:
+        bug = service.submit_bug(submission=submission, provider_name="launchpad")
+        if bug is None:
+            failed_count += 1
+            continue
+
+        MergeBugPackageInfo.objects.filter(package=package_name).update(bug_filed_this_cycle=True)
+        submitted_count += 1
+
+    return submitted_count, failed_count
 
 
 @task()

@@ -284,7 +284,7 @@ def prepare_merge_bug(
 
     # Check Debian and Ubuntu versions
     new_merge_version_info = MergePackageVersionInfo(
-        package_settings.package, ubuntu_release, queryService
+        package_settings.package, ubuntu_release.adjective, queryService
     )
 
     new_merge_version_info.refresh_versions()
@@ -301,3 +301,27 @@ def prepare_merge_bug(
         subscribers=[UserRecord(username=sub) for sub in filter_settings.subscribers],
     )
     return bug_submission
+
+
+def prepare_merge_bugs_for_all_packages(
+    queryService: QueryService,
+    ubuntu_release: UbuntuRelease,
+    filter_settings: MergeBugFilterSettings,
+) -> list[tuple[str, BugSubmissionRecord]]:
+    """Prepare merge bug submissions for every configured merge package.
+
+    Returns ``(package_name, submission)`` pairs for packages that currently
+    require a merge bug.
+    """
+    submissions: list[tuple[str, BugSubmissionRecord]] = []
+    for package_settings in MergeBugPackageInfo.objects.order_by("package"):
+        submission = prepare_merge_bug(
+            queryService=queryService,
+            ubuntu_release=ubuntu_release,
+            package_settings=package_settings,
+            filter_settings=filter_settings,
+        )
+        if submission is not None:
+            print(f"Prepared merge bug for {package_settings.package}")
+            submissions.append((package_settings.package, submission))
+    return submissions

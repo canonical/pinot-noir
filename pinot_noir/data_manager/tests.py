@@ -185,8 +185,8 @@ def _make_merge_service(
 ) -> MagicMock:
     """Return a mocked QueryService serving the given package versions."""
     versions = {
-        (release_mock, "Proposed"): _mock_version(proposed),
-        (release_mock, "Release"): _mock_version(release_ver),
+        (release_mock.adjective, "Proposed"): _mock_version(proposed),
+        (release_mock.adjective, "Release"): _mock_version(release_ver),
         ("debian-unstable", None): _mock_version(unstable),
         ("debian-experimental", None): _mock_version(experimental),
     }
