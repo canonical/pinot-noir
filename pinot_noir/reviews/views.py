@@ -4,11 +4,11 @@ from .models import Review
 
 STATUS_ORDER = {
     Review.STATUS_NEEDS_REVIEW: 0,
-    Review.STATUS_WORK_IN_PROGRESS: 1,
-    Review.STATUS_UNDER_REVIEW: 2,
-    Review.STATUS_APPROVED: 3,
-    Review.STATUS_NEEDS_FIXING: 4,
-    Review.STATUS_NEEDS_INFORMATION: 5,
+    Review.STATUS_NEEDS_FIXING: 1,
+    Review.STATUS_NEEDS_INFORMATION: 2,
+    Review.STATUS_UNDER_REVIEW: 3,
+    Review.STATUS_APPROVED: 4,
+    Review.STATUS_WORK_IN_PROGRESS: 5,
 }
 
 
