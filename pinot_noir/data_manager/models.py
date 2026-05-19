@@ -88,7 +88,7 @@ class MergeBugFilterSettings(models.Model):
     settings_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_MERGE)
 
     tags_combined = models.CharField(max_length=600, default="")
-    subscribers_combined = models.CharField(max_length=600, default="")
+    subscribers_combined = models.CharField(max_length=600, default="", blank=True)
 
     class Meta:
         verbose_name = "Merge Bug Filter Setting"
