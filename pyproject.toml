@@ -11,7 +11,7 @@ dependencies = [
     "django-tasks-db>=0.12.0",
     "python-debian>=1.1.0",
     "pyyaml>=6.0",
-    "ubq>=0.4.5",
+    "ubq>=0.4.6",
 ]
 
 [dependency-groups]
