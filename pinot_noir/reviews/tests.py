@@ -36,7 +36,7 @@ class SortReviewsDefaultTests(TestCase):
 
         self.assertEqual(
             [r.status for r in sorted_reviews],
-            [Review.STATUS_NEEDS_REVIEW, Review.STATUS_WORK_IN_PROGRESS, Review.STATUS_APPROVED],
+            [Review.STATUS_NEEDS_REVIEW, Review.STATUS_APPROVED, Review.STATUS_WORK_IN_PROGRESS],
         )
 
 
