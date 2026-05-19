@@ -294,6 +294,7 @@ def prepare_merge_bug(
     bug_submission = BugSubmissionRecord(
         provider_name="launchpad",
         title=f"Merge {package_settings.package} from Debian for {ubuntu_release.adjective} cycle",
+        package_names=[package_settings.package],
         description=str(new_merge_version_info),
         tags=filter_settings.tags,
         milestone=use_milestone,
