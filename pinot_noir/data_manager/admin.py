@@ -13,8 +13,42 @@ from .models import (
 
 @admin.register(UserTokens)
 class UserTokensAdmin(admin.ModelAdmin):
-    list_display = ("user", "lp_token")
+    list_display = ("user", "masked_lp_token")
     search_fields = ("user__username",)
+    readonly_fields = ("user",)
+
+    @admin.display(description="lp_token")
+    def masked_lp_token(self, obj):
+        if not obj.lp_token:
+            return ""
+        return "********"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(user=request.user)
+
+    def has_view_permission(self, request, obj=None):
+        if obj is None:
+            return request.user.is_staff
+        return obj.user_id == request.user.id
+
+    def has_change_permission(self, request, obj=None):
+        if obj is None:
+            return request.user.is_staff
+        return obj.user_id == request.user.id
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is None:
+            return request.user.is_staff
+        return obj.user_id == request.user.id
+
+    def has_add_permission(self, request):
+        if not request.user.is_staff:
+            return False
+        return not UserTokens.objects.filter(user=request.user).exists()
+
+    def save_model(self, request, obj, form, change):
+        obj.user = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(MergeBugPackageInfo)

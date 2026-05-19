@@ -2,6 +2,8 @@ from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.db import models
 
+from .fields import EncryptedTextField
+
 
 class UserTokens(models.Model):
     """Tokens for a Django admin user to access external services."""
@@ -13,8 +15,8 @@ class UserTokens(models.Model):
     # The associated Django admin user
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
-    # Lauchpad API credentials string
-    lp_token = models.CharField(max_length=1000)
+    # Launchpad API credentials string
+    lp_token = EncryptedTextField()
 
 
 class MergeBugPackageInfo(models.Model):
