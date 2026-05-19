@@ -72,7 +72,7 @@ class MergePackageVersionInfo:
 
         return full_str
 
-    def _get_version_string(self, series: str, pocket: str | None = None) -> str:
+    def _get_version_string(self, series: str, pocket: str = "Release") -> str:
         """Get package version string for series and pocket."""
         package_version = self._queryService.get_version(
             self._package_name, series=series, pocket=pocket, provider_name="launchpad"
