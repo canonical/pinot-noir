@@ -27,7 +27,7 @@ def _make_info(
     versions = {
         (devel_series, "Proposed"): _mock_version(proposed),
         (devel_series, "Release"): _mock_version(release),
-        ("debian-unstable", None): _mock_version(unstable),
+        ("debian-sid", None): _mock_version(unstable),
         ("debian-experimental", None): _mock_version(experimental),
     }
     service = MagicMock()
@@ -187,7 +187,7 @@ def _make_merge_service(
     versions = {
         (release_mock.adjective, "Proposed"): _mock_version(proposed),
         (release_mock.adjective, "Release"): _mock_version(release_ver),
-        ("debian-unstable", None): _mock_version(unstable),
+        ("debian-sid", None): _mock_version(unstable),
         ("debian-experimental", None): _mock_version(experimental),
     }
     service = MagicMock()

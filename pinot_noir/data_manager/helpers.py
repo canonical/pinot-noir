@@ -72,7 +72,7 @@ class MergePackageVersionInfo:
 
         return full_str
 
-    def _get_version_string(self, series: str, pocket: str = "Release") -> str:
+    def _get_version_string(self, series: str, pocket: str | None = None) -> str:
         """Get package version string for series and pocket."""
         package_version = self._queryService.get_version(
             self._package_name, series=series, pocket=pocket, provider_name="launchpad"
@@ -118,7 +118,7 @@ class MergePackageVersionInfo:
         """Refresh all version strings from Launchpad."""
         self._proposed_version = self._get_version_string(self._devel_series, pocket="Proposed")
         self._release_version = self._get_version_string(self._devel_series, pocket="Release")
-        self._debian_unstable_version = self._get_version_string("debian-unstable")
+        self._debian_unstable_version = self._get_version_string("debian-sid")
         self._debian_experimental_version = self._get_version_string("debian-experimental")
 
         self._determine_versions_to_use()
