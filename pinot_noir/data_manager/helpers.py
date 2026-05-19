@@ -111,7 +111,8 @@ class MergePackageVersionInfo:
         ubuntu_version = proposed if self._use_proposed else release
         debian_version = experimental if self._use_experimental else unstable
 
-        if debian_version > ubuntu_version:
+        # Check debian version greater, ubuntu version available, and ubuntu version not a sync
+        if debian_version > ubuntu_version > Version("0") and "ubuntu" in str(ubuntu_version):
             self._ready_for_merge = True
 
     def refresh_versions(self) -> None:
