@@ -70,8 +70,8 @@
                         <tr>
                             <th aria-sort="none">Package</th>
                             <th aria-sort="none">Release</th>
-                            <th aria-sort="none">Reviewer</th>
                             <th aria-sort="none">Submitter</th>
+                            <th aria-sort="none">Reviewer</th>
                             <th class="u-align--center" aria-sort="none">Status</th>
                         </tr>
                     </thead>
@@ -83,18 +83,6 @@
                             </th>
                             <td>{% if review.release_version %}{{ review.release_version }}{% else %}&mdash;{% endif %}</td>
                             <td>
-                                {% if review.reviewer_user %}
-                                    {% if review.reviewer_user.email_md5 %}
-                                        <img src="{{ review.reviewer_user.gravatar_url }}" alt="{{ review.reviewer_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
-                                    {% endif %}
-                                    <a href="https://launchpad.net/~{{ review.reviewer_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer_user.username }}</a>
-                                {% elif review.reviewer %}
-                                    <a href="https://launchpad.net/~{{ review.reviewer|lower }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer }}</a>
-                                {% else %}
-                                    &mdash;
-                                {% endif %}
-                            </td>
-                            <td>
                                 {% if review.submitter_user %}
                                     {% if review.submitter_user.email_md5 %}
                                         <img src="{{ review.submitter_user.gravatar_url }}" alt="{{ review.submitter_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
@@ -102,6 +90,18 @@
                                     <a href="https://launchpad.net/~{{ review.submitter_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.submitter_user.username }}</a>
                                 {% elif review.submitter %}
                                     <a href="https://launchpad.net/~{{ review.submitter|lower }}" target="_blank" rel="noopener noreferrer">{{ review.submitter }}</a>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if review.reviewer_user %}
+                                    {% if review.reviewer_user.email_md5 %}
+                                        <img src="{{ review.reviewer_user.gravatar_url }}" alt="{{ review.reviewer_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                                    {% endif %}
+                                    <a href="https://launchpad.net/~{{ review.reviewer_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer_user.username }}</a>
+                                {% elif review.reviewer %}
+                                    <a href="https://launchpad.net/~{{ review.reviewer|lower }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer }}</a>
                                 {% else %}
                                     &mdash;
                                 {% endif %}
