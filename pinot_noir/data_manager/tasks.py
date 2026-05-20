@@ -235,7 +235,9 @@ def refresh_reviews(username: str) -> None:
     Review.objects.all().delete()
     Review.objects.bulk_create(new_reviews)
 
-    refresh_reviews.enqueue(username, run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
+    refresh_reviews.using(
+        run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS)
+    ).enqueue(username)
 
 
 @task()
@@ -282,12 +284,9 @@ def queue_single_merge_refresh(
 ) -> None:
     """Enqueue a refresh for *bug_id* and re-schedule this task after *interval_hours* hours."""
     refresh_single_merge.enqueue(username, bug_id)
-    queue_single_merge_refresh.enqueue(
-        username,
-        bug_id,
-        interval_hours,
+    queue_single_merge_refresh.using(
         run_after=timezone.now() + timedelta(hours=interval_hours),
-    )
+    ).enqueue(username, bug_id, interval_hours)
 
 
 @task()
@@ -309,7 +308,6 @@ def enqueue_all_merge_refreshes(
         status="READY",
     ).delete()
 
-
     bug_ids = list(Merge.objects.values_list("lp_bug", flat=True))
     count = len(bug_ids)
     if not count:
@@ -317,12 +315,9 @@ def enqueue_all_merge_refreshes(
 
     for i, bug_id in enumerate(bug_ids):
         delay_hours = i * single_merge_refresh_interval_hours / count
-        queue_single_merge_refresh.enqueue(
-            username,
-            bug_id,
-            single_merge_refresh_interval_hours,
+        queue_single_merge_refresh.using(
             run_after=timezone.now() + timedelta(hours=delay_hours),
-        )
+        ).enqueue(username, bug_id, single_merge_refresh_interval_hours)
 
 
 def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
