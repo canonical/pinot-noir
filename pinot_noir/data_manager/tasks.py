@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django_tasks import task
+from django_tasks_db.models import DBTaskResult
 from ubq import QueryService
 from ubq.models import BugSubmissionRecord, ProviderCredentials, UserRecord
 
@@ -31,6 +32,7 @@ from pinot_noir.merges_schedule.models import Merge
 from pinot_noir.reviews.models import Review
 
 REFRESH_INTERVAL_HOURS = 6
+SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
 
 
 def _get_devel_release() -> UbuntuRelease:
@@ -233,6 +235,93 @@ def refresh_reviews(user: User) -> None:
     Review.objects.bulk_create(new_reviews)
 
     refresh_reviews.enqueue(user, run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
+
+
+@task()
+def refresh_single_merge(user: User, bug_id: int) -> None:
+    """Refresh a single Merge record by its Launchpad bug ID.
+
+    Fetches the latest bug data from Launchpad and updates (or creates) the
+    corresponding ``Merge`` row.  If the bug cannot be fetched or parsed the
+    existing record is left unchanged.
+    """
+    existing = Merge.objects.filter(lp_bug=bug_id).first()
+
+    service = _get_launchpad_service_for_user(user)
+
+    full_bug = service.get_bug(str(bug_id), provider_name="launchpad")
+    if full_bug is None:
+        return
+
+    merge_type = existing.merge_type if existing else Merge.TYPE_MERGE
+    milestone = existing.milestone if existing else ""
+
+    merge = merge_from_bug(str(bug_id), full_bug, milestone, merge_type)
+    if merge is None:
+        return
+
+    Merge.objects.update_or_create(
+        lp_bug=bug_id,
+        defaults={
+            "package": merge.package,
+            "merge_type": merge.merge_type,
+            "assignee": merge.assignee,
+            "assignee_user": merge.assignee_user,
+            "milestone": merge.milestone,
+            "status": merge.status,
+        },
+    )
+
+
+@task()
+def queue_single_merge_refresh(
+    user: User,
+    bug_id: int,
+    interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
+) -> None:
+    """Enqueue a refresh for *bug_id* and re-schedule this task after *interval_hours* hours."""
+    refresh_single_merge.enqueue(user, bug_id)
+    queue_single_merge_refresh.enqueue(
+        user,
+        bug_id,
+        interval_hours,
+        run_after=timezone.now() + timedelta(hours=interval_hours),
+    )
+
+
+@task()
+def enqueue_all_merge_refreshes(
+    user: User,
+    single_merge_refresh_interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
+) -> None:
+    """Enqueue staggered ``queue_single_merge_refresh`` tasks for every bug in the Merge table.
+
+    Initial runs are spread evenly across *single_merge_refresh_interval_hours* so that subsequent
+    periodic refreshes remain staggered rather than firing all at once.
+    """
+    # Clear existing queued single-merge refreshes to avoid duplicates
+    DBTaskResult.objects.filter(
+        task_path__in=[
+            queue_single_merge_refresh.module_path,
+            refresh_single_merge.module_path,
+        ],
+        status="READY",
+    ).delete()
+
+
+    bug_ids = list(Merge.objects.values_list("lp_bug", flat=True))
+    count = len(bug_ids)
+    if not count:
+        return
+
+    for i, bug_id in enumerate(bug_ids):
+        delay_hours = i * single_merge_refresh_interval_hours / count
+        queue_single_merge_refresh.enqueue(
+            user,
+            bug_id,
+            single_merge_refresh_interval_hours,
+            run_after=timezone.now() + timedelta(hours=delay_hours),
+        )
 
 
 def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
