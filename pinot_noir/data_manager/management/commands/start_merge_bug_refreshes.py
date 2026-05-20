@@ -25,7 +25,8 @@ class Command(BaseCommand):
             type=int,
             default=SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
             help=(
-                f"Hours between per-bug refreshes (default: {SINGLE_MERGE_REFRESH_INTERVAL_HOURS})."
+                "Hours between per-bug refreshes "
+                f"(default: {SINGLE_MERGE_REFRESH_INTERVAL_HOURS})."
             ),
         )
 
@@ -34,7 +35,6 @@ class Command(BaseCommand):
         enqueue_all_merge_refreshes.enqueue(options["username"], interval_hours)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Staggered merge bug refreshes enqueued "
-                f"(interval: {interval_hours}h)."
+                f"Staggered merge bug refreshes enqueued (interval: {interval_hours}h)."
             )
         )
