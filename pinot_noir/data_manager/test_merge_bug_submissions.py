@@ -9,8 +9,8 @@ from pinot_noir.data_manager.models import MergeBugFilterSettings, MergeBugPacka
 from pinot_noir.data_manager.tasks import (
     bug_submission_from_json_dict,
     bug_submission_to_json_dict,
-    prepare_merge_bug_submissions_for_user,
-    submit_prepared_merge_bug_submissions_for_user,
+    prepare_merge_bug_submissions,
+    submit_prepared_merge_bug_submissions,
 )
 from pinot_noir.launchpad.models import UbuntuRelease
 
@@ -67,7 +67,7 @@ class MergeBugSubmissionPreparationTests(TestCase):
         expected = [("pkg", MagicMock())]
         prepare_all_mock.return_value = expected
 
-        result = prepare_merge_bug_submissions_for_user(user)
+        result = prepare_merge_bug_submissions(user)
 
         self.assertEqual(result, expected)
         get_service_mock.assert_called_once_with(user)
@@ -104,7 +104,7 @@ class MergeBugSubmissionSubmitTests(TestCase):
         service.submit_bug.side_effect = [object(), None]
         get_service_mock.return_value = service
 
-        submitted, failed = submit_prepared_merge_bug_submissions_for_user(
+        submitted, failed = submit_prepared_merge_bug_submissions(
             user,
             [("okpkg", submit_ok), ("failpkg", submit_fail)],
         )

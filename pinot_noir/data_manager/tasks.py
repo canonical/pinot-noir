@@ -91,7 +91,7 @@ def bug_submission_from_json_dict(data: dict[str, Any]) -> BugSubmissionRecord:
     )
 
 
-def prepare_merge_bug_submissions_for_user(
+def prepare_merge_bug_submissions(
     user: User,
     release_adjective: str | None = None,
 ) -> list[tuple[str, BugSubmissionRecord]]:
@@ -111,7 +111,7 @@ def prepare_merge_bug_submissions_for_user(
     return prepare_merge_bugs_for_all_packages(service, ubuntu_release, filter_settings)
 
 
-def submit_prepared_merge_bug_submissions_for_user(
+def submit_prepared_merge_bug_submissions(
     user: User,
     submissions: list[tuple[str, BugSubmissionRecord]],
 ) -> tuple[int, int]:

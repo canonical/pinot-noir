@@ -8,8 +8,8 @@ from django.core.management.base import BaseCommand, CommandError
 from pinot_noir.data_manager.tasks import (
     bug_submission_from_json_dict,
     bug_submission_to_json_dict,
-    prepare_merge_bug_submissions_for_user,
-    submit_prepared_merge_bug_submissions_for_user,
+    prepare_merge_bug_submissions,
+    submit_prepared_merge_bug_submissions,
 )
 
 
@@ -96,7 +96,7 @@ class Command(BaseCommand):
             submissions = self._load_submissions(options["input_json"])
             self.stdout.write(f"Loaded {len(submissions)} prepared submission(s) from JSON.")
         else:
-            submissions = prepare_merge_bug_submissions_for_user(
+            submissions = prepare_merge_bug_submissions(
                 user=user,
                 release_adjective=options.get("release"),
             )
@@ -109,7 +109,7 @@ class Command(BaseCommand):
             )
 
         if options["submit"]:
-            submitted, failed = submit_prepared_merge_bug_submissions_for_user(user, submissions)
+            submitted, failed = submit_prepared_merge_bug_submissions(user, submissions)
             self.stdout.write(
                 self.style.SUCCESS(f"Submitted {submitted} bug(s); {failed} submission(s) failed.")
             )

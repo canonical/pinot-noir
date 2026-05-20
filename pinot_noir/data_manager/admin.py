@@ -6,8 +6,8 @@ from django.http import HttpResponse
 
 from pinot_noir.data_manager.tasks import (
     bug_submission_to_json_dict,
-    prepare_merge_bug_submissions_for_user,
-    submit_prepared_merge_bug_submissions_for_user,
+    prepare_merge_bug_submissions,
+    submit_prepared_merge_bug_submissions,
 )
 
 from .models import (
@@ -69,7 +69,7 @@ class MergeBugPackageInfoAdmin(admin.ModelAdmin):
     @admin.action(description="Prepare merge bug submissions and download as JSON")
     def prepare_merge_bugs_download_json(self, request, queryset):
         try:
-            submissions = prepare_merge_bug_submissions_for_user(user=request.user)
+            submissions = prepare_merge_bug_submissions(user=request.user)
         except Exception as exc:
             self.message_user(request, f"Failed to prepare submissions: {exc}", messages.ERROR)
             return
@@ -92,7 +92,7 @@ class MergeBugPackageInfoAdmin(admin.ModelAdmin):
     @admin.action(description="Prepare and submit merge bugs to Launchpad")
     def prepare_and_submit_merge_bugs(self, request, queryset):
         try:
-            submissions = prepare_merge_bug_submissions_for_user(user=request.user)
+            submissions = prepare_merge_bug_submissions(user=request.user)
         except Exception as exc:
             self.message_user(request, f"Failed to prepare submissions: {exc}", messages.ERROR)
             return
@@ -102,7 +102,7 @@ class MergeBugPackageInfoAdmin(admin.ModelAdmin):
             return
 
         try:
-            submitted, failed = submit_prepared_merge_bug_submissions_for_user(
+            submitted, failed = submit_prepared_merge_bug_submissions(
                 user=request.user, submissions=submissions
             )
         except Exception as exc:
