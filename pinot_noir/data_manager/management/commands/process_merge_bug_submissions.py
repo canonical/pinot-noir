@@ -2,7 +2,6 @@
 
 import json
 
-from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 
 from pinot_noir.data_manager.tasks import (
@@ -87,17 +86,14 @@ class Command(BaseCommand):
         if options["input_json"] and options["output_json"]:
             raise CommandError("Use either --input-json or --output-json, not both.")
 
-        try:
-            user = User.objects.get(username=options["username"])
-        except User.DoesNotExist as exc:
-            raise CommandError(f"User {options['username']!r} does not exist.") from exc
+        username = options["username"]
 
         if options["input_json"]:
             submissions = self._load_submissions(options["input_json"])
             self.stdout.write(f"Loaded {len(submissions)} prepared submission(s) from JSON.")
         else:
             submissions = prepare_merge_bug_submissions(
-                user=user,
+                username=username,
                 release_adjective=options.get("release"),
             )
             self.stdout.write(f"Prepared {len(submissions)} submission(s).")
@@ -109,7 +105,7 @@ class Command(BaseCommand):
             )
 
         if options["submit"]:
-            submitted, failed = submit_prepared_merge_bug_submissions(user, submissions)
+            submitted, failed = submit_prepared_merge_bug_submissions(username, submissions)
             self.stdout.write(
                 self.style.SUCCESS(f"Submitted {submitted} bug(s); {failed} submission(s) failed.")
             )

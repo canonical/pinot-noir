@@ -1,7 +1,6 @@
 """Management command to enqueue staggered per-bug merge refresh tasks."""
 
-from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from pinot_noir.data_manager.tasks import (
     SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
@@ -31,13 +30,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
-        try:
-            user = User.objects.get(username=options["username"])
-        except User.DoesNotExist as exc:
-            raise CommandError(f"User {options['username']!r} does not exist.") from exc
-
         interval_hours = options["interval_hours"]
-        enqueue_all_merge_refreshes.enqueue(user, interval_hours)
+        enqueue_all_merge_refreshes.enqueue(options["username"], interval_hours)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Staggered merge bug refreshes enqueued "

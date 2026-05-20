@@ -1,7 +1,6 @@
 """Management command to enqueue the initial review-sync task."""
 
-from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from pinot_noir.data_manager.tasks import refresh_reviews
 
@@ -17,10 +16,5 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
-        try:
-            user = User.objects.get(username=options["username"])
-        except User.DoesNotExist as exc:
-            raise CommandError(f"User {options['username']!r} does not exist.") from exc
-
-        refresh_reviews.enqueue(user)
+        refresh_reviews.enqueue(options["username"])
         self.stdout.write(self.style.SUCCESS("Review sync task enqueued."))

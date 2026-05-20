@@ -42,10 +42,11 @@ def _get_devel_release() -> UbuntuRelease:
     return release
 
 
-def _get_launchpad_service_for_user(user: User) -> QueryService:
+def _get_launchpad_service_for_user(username: str) -> QueryService:
+    user = User.objects.get(username=username)
     tokens = UserTokens.objects.filter(user=user).first()
     if tokens is None or not tokens.lp_token:
-        raise ObjectDoesNotExist(f"No Launchpad token configured for user '{user.username}'.")
+        raise ObjectDoesNotExist(f"No Launchpad token configured for user '{username}'.")
 
     service = QueryService()
     service.login(
@@ -94,7 +95,7 @@ def bug_submission_from_json_dict(data: dict[str, Any]) -> BugSubmissionRecord:
 
 
 def prepare_merge_bug_submissions(
-    user: User,
+    username: str,
     release_adjective: str | None = None,
 ) -> list[tuple[str, BugSubmissionRecord]]:
     """Prepare merge bug submissions for all packages using a user's LP token."""
@@ -109,19 +110,19 @@ def prepare_merge_bug_submissions(
     if filter_settings is None:
         raise ObjectDoesNotExist("No merge bug filter settings found.")
 
-    service = _get_launchpad_service_for_user(user)
+    service = _get_launchpad_service_for_user(username)
     return prepare_merge_bugs_for_all_packages(service, ubuntu_release, filter_settings)
 
 
 def submit_prepared_merge_bug_submissions(
-    user: User,
+    username: str,
     submissions: list[tuple[str, BugSubmissionRecord]],
 ) -> tuple[int, int]:
     """Submit prepared merge bug submissions and mark package rows as filed.
 
     Returns ``(submitted_count, failed_count)``.
     """
-    service = _get_launchpad_service_for_user(user)
+    service = _get_launchpad_service_for_user(username)
 
     submitted_count = 0
     failed_count = 0
@@ -138,7 +139,7 @@ def submit_prepared_merge_bug_submissions(
 
 
 @task()
-def refresh_merge_schedule(user: User, release_adjective: str) -> None:
+def refresh_merge_schedule(username: str, release_adjective: str) -> None:
     """Wipe the merge schedule then re-import bugs from Launchpad for a given Ubuntu release.
 
     Looks up the Ubuntu release by its adjective (e.g. ``'resolute'``), computes
@@ -158,7 +159,7 @@ def refresh_merge_schedule(user: User, release_adjective: str) -> None:
     ).first()
     backport_settings = BackportBugFilterSettings.objects.first()
 
-    service = _get_launchpad_service_for_user(user)
+    service = _get_launchpad_service_for_user(username)
 
     bugs_to_import: dict[str, tuple] = {}
     if merge_settings:
@@ -184,7 +185,7 @@ def refresh_merge_schedule(user: User, release_adjective: str) -> None:
 
 
 @task()
-def refresh_reviews(user: User) -> None:
+def refresh_reviews(username: str) -> None:
     """Replace the reviews table with current merge request data from Launchpad.
 
     Iterates over all stored LPUser records, queries Launchpad for each user's
@@ -193,7 +194,7 @@ def refresh_reviews(user: User) -> None:
     after ``REFRESH_INTERVAL_HOURS`` hours.
     """
 
-    service = _get_launchpad_service_for_user(user)
+    service = _get_launchpad_service_for_user(username)
 
     marker_usernames = set(LPReviewMarkerUser.objects.values_list("username", flat=True))
 
@@ -234,11 +235,11 @@ def refresh_reviews(user: User) -> None:
     Review.objects.all().delete()
     Review.objects.bulk_create(new_reviews)
 
-    refresh_reviews.enqueue(user, run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
+    refresh_reviews.enqueue(username, run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
 
 
 @task()
-def refresh_single_merge(user: User, bug_id: int) -> None:
+def refresh_single_merge(username: str, bug_id: int) -> None:
     """Refresh a single Merge record by its Launchpad bug ID.
 
     Fetches the latest bug data from Launchpad and updates (or creates) the
@@ -247,7 +248,7 @@ def refresh_single_merge(user: User, bug_id: int) -> None:
     """
     existing = Merge.objects.filter(lp_bug=bug_id).first()
 
-    service = _get_launchpad_service_for_user(user)
+    service = _get_launchpad_service_for_user(username)
 
     full_bug = service.get_bug(str(bug_id), provider_name="launchpad")
     if full_bug is None:
@@ -275,14 +276,14 @@ def refresh_single_merge(user: User, bug_id: int) -> None:
 
 @task()
 def queue_single_merge_refresh(
-    user: User,
+    username: str,
     bug_id: int,
     interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
 ) -> None:
     """Enqueue a refresh for *bug_id* and re-schedule this task after *interval_hours* hours."""
-    refresh_single_merge.enqueue(user, bug_id)
+    refresh_single_merge.enqueue(username, bug_id)
     queue_single_merge_refresh.enqueue(
-        user,
+        username,
         bug_id,
         interval_hours,
         run_after=timezone.now() + timedelta(hours=interval_hours),
@@ -291,7 +292,7 @@ def queue_single_merge_refresh(
 
 @task()
 def enqueue_all_merge_refreshes(
-    user: User,
+    username: str,
     single_merge_refresh_interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
 ) -> None:
     """Enqueue staggered ``queue_single_merge_refresh`` tasks for every bug in the Merge table.
@@ -317,7 +318,7 @@ def enqueue_all_merge_refreshes(
     for i, bug_id in enumerate(bug_ids):
         delay_hours = i * single_merge_refresh_interval_hours / count
         queue_single_merge_refresh.enqueue(
-            user,
+            username,
             bug_id,
             single_merge_refresh_interval_hours,
             run_after=timezone.now() + timedelta(hours=delay_hours),
