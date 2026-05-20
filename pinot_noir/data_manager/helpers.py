@@ -326,3 +326,51 @@ def prepare_merge_bugs_for_all_packages(
             print(f"Prepared merge bug for {package_settings.package}")
             submissions.append((package_settings.package, submission))
     return submissions
+
+
+def prepare_backport_bug(
+    ubuntu_release: UbuntuRelease,
+    package_settings: BackportBugPackageInfo,
+    filter_settings: MergeBugFilterSettings,
+) -> BugSubmissionRecord | None:
+    """Prepare a bug submission for a backport if one is needed."""
+    if package_settings.bug_filed_this_cycle:
+        return None
+
+    possible_milestones = sorted(milestones_for_release(ubuntu_release.version))
+    if package_settings.milestone_offset < len(possible_milestones):
+        use_milestone = f"ubuntu-{possible_milestones[package_settings.milestone_offset]}"
+    else:
+        use_milestone = f"ubuntu-{possible_milestones[0]}"
+
+    return BugSubmissionRecord(
+        provider_name="launchpad",
+        title=f"Backport {package_settings.name} for {ubuntu_release.adjective} cycle",
+        package_names=package_settings.packages,
+        description=package_settings.description_template,
+        tags=filter_settings.tags,
+        milestone=use_milestone,
+        subscribers=[UserRecord(username=sub) for sub in filter_settings.subscribers],
+    )
+
+
+def prepare_backport_bugs_for_all_packages(
+    ubuntu_release: UbuntuRelease,
+    filter_settings: MergeBugFilterSettings,
+) -> list[tuple[str, BugSubmissionRecord]]:
+    """Prepare backport bug submissions for every configured backport package.
+
+    Returns ``(package_name, submission)`` pairs for packages that currently
+    require a backport bug.
+    """
+    submissions: list[tuple[str, BugSubmissionRecord]] = []
+    for package_settings in BackportBugPackageInfo.objects.order_by("name"):
+        submission = prepare_backport_bug(
+            ubuntu_release=ubuntu_release,
+            package_settings=package_settings,
+            filter_settings=filter_settings,
+        )
+        if submission is not None:
+            print(f"Prepared backport bug for {package_settings.name}")
+            submissions.append((package_settings.name, submission))
+    return submissions

@@ -17,11 +17,13 @@ from pinot_noir.data_manager.helpers import (
     merge_from_bug,
     milestones_for_release,
     package_from_url,
+    prepare_backport_bugs_for_all_packages,
     prepare_merge_bugs_for_all_packages,
     release_from_branch,
 )
 from pinot_noir.data_manager.models import (
     BackportBugFilterSettings,
+    BackportBugPackageInfo,
     LPReviewMarkerUser,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
@@ -133,6 +135,47 @@ def submit_prepared_merge_bug_submissions(
             continue
 
         MergeBugPackageInfo.objects.filter(package=package_name).update(bug_filed_this_cycle=True)
+        submitted_count += 1
+
+    return submitted_count, failed_count
+
+
+def prepare_backport_bug_submissions(
+    username: str,
+    release_adjective: str | None = None,
+) -> list[tuple[str, BugSubmissionRecord]]:
+    """Prepare backport bug submissions for all packages."""
+    if release_adjective:
+        ubuntu_release = UbuntuRelease.objects.get(adjective=release_adjective)
+    else:
+        ubuntu_release = _get_devel_release()
+
+    filter_settings = BackportBugFilterSettings.objects.first()
+    if filter_settings is None:
+        raise ObjectDoesNotExist("No backport bug filter settings found.")
+
+    return prepare_backport_bugs_for_all_packages(ubuntu_release, filter_settings)
+
+
+def submit_prepared_backport_bug_submissions(
+    username: str,
+    submissions: list[tuple[str, BugSubmissionRecord]],
+) -> tuple[int, int]:
+    """Submit prepared backport bug submissions and mark package rows as filed.
+
+    Returns ``(submitted_count, failed_count)``.
+    """
+    service = _get_launchpad_service_for_user(username)
+
+    submitted_count = 0
+    failed_count = 0
+    for package_name, submission in submissions:
+        bug = service.submit_bug(submission=submission, provider_name="launchpad")
+        if bug is None:
+            failed_count += 1
+            continue
+
+        BackportBugPackageInfo.objects.filter(name=package_name).update(bug_filed_this_cycle=True)
         submitted_count += 1
 
     return submitted_count, failed_count
