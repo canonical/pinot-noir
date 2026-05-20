@@ -136,7 +136,7 @@ def submit_prepared_merge_bug_submissions(
 
 
 @task()
-def refresh_merge_schedule(release_adjective: str) -> None:
+def refresh_merge_schedule(user: User, release_adjective: str) -> None:
     """Wipe the merge schedule then re-import bugs from Launchpad for a given Ubuntu release.
 
     Looks up the Ubuntu release by its adjective (e.g. ``'resolute'``), computes
@@ -156,8 +156,7 @@ def refresh_merge_schedule(release_adjective: str) -> None:
     ).first()
     backport_settings = BackportBugFilterSettings.objects.first()
 
-    service = QueryService()
-    service.login(provider_name="launchpad")
+    service = _get_launchpad_service_for_user(user)
 
     bugs_to_import: dict[str, tuple] = {}
     if merge_settings:
@@ -183,7 +182,7 @@ def refresh_merge_schedule(release_adjective: str) -> None:
 
 
 @task()
-def refresh_reviews() -> None:
+def refresh_reviews(user: User) -> None:
     """Replace the reviews table with current merge request data from Launchpad.
 
     Iterates over all stored LPUser records, queries Launchpad for each user's
@@ -192,8 +191,7 @@ def refresh_reviews() -> None:
     after ``REFRESH_INTERVAL_HOURS`` hours.
     """
 
-    service = QueryService()
-    service.login(provider_name="launchpad")
+    service = _get_launchpad_service_for_user(user)
 
     marker_usernames = set(LPReviewMarkerUser.objects.values_list("username", flat=True))
 
@@ -234,7 +232,7 @@ def refresh_reviews() -> None:
     Review.objects.all().delete()
     Review.objects.bulk_create(new_reviews)
 
-    refresh_reviews.enqueue(run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
+    refresh_reviews.enqueue(user, run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS))
 
 
 def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
