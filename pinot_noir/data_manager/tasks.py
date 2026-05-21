@@ -351,7 +351,9 @@ def enqueue_all_merge_refreshes(
         status="READY",
     ).delete()
 
-    bug_ids = list(Merge.objects.values_list("lp_bug", flat=True))
+    bug_ids = list(
+        Merge.objects.exclude(status=Merge.STATUS_DONE).values_list("lp_bug", flat=True)
+    )
     count = len(bug_ids)
     if not count:
         return
