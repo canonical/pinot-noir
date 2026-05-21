@@ -237,6 +237,11 @@ def refresh_reviews(username: str) -> None:
     after ``REFRESH_INTERVAL_HOURS`` hours.
     """
 
+    DBTaskResult.objects.filter(
+        task_path=refresh_reviews.module_path,
+        status="READY",
+    ).delete()
+
     service = _get_launchpad_service_for_user(username)
 
     marker_usernames = set(LPReviewMarkerUser.objects.values_list("username", flat=True))
