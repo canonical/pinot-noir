@@ -31,7 +31,7 @@ def index(request):
     reviews = Review.objects.select_related("reviewer_user", "submitter_user").all()
     sorted_reviews = sort_reviews_default(reviews)
 
-    releases = sorted({r.release_version for r in reviews if r.release_version})
+    releases = sorted({r.release_version for r in reviews if r.release_version}, reverse=True)
     reviewers = sorted(
         {
             (r.reviewer_user.username if r.reviewer_user else (r.reviewer or "UNASSIGNED"))
