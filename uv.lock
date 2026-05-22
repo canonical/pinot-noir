@@ -409,7 +409,7 @@ requires-dist = [
     { name = "django-tasks-db", specifier = ">=0.12.0" },
     { name = "python-debian", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "ubq", specifier = ">=0.4.6" },
+    { name = "ubq", specifier = ">=0.5.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -614,16 +614,16 @@ wheels = [
 
 [[package]]
 name = "ubq"
-version = "0.4.6"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "keyring" },
     { name = "launchpadlib" },
     { name = "lazr-restfulclient" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/c0/9c005c184c9d4d7e8c6d6496366ae323ec576f54ddd37ef50d7c0a7db26c/ubq-0.4.6.tar.gz", hash = "sha256:d719e77d8b4cc467bf04b69b99847d1923bc4e012ca7e776a8272e1527e3d6a5", size = 51484, upload-time = "2026-05-19T18:56:06.78Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/11/b46057b72fe7b4c2aac3ac00e46fbb3e52094a518254afd8b5d15a32c2fa/ubq-0.5.0.tar.gz", hash = "sha256:0854d75cc86dea2e2d86822bb687592267c580ae0179e07fdec3278efc69e05c", size = 52392, upload-time = "2026-05-22T14:48:03.511Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/8a/5e11a9a456903eb8f0ee27b0a405f959507e3599d845a002e35e96584701/ubq-0.4.6-py3-none-any.whl", hash = "sha256:50c0d832577179483cb38ef1db271469b94b3a9580d649c3edff248980882751", size = 40072, upload-time = "2026-05-19T18:56:05.356Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/96/b5c1345636d046381e9a6c6d53bfdf4921c0e1ea423b39573561b3bbddfd/ubq-0.5.0-py3-none-any.whl", hash = "sha256:7769c63a00a0177f2bcb805e9c351865a0d176eb111e20031b55eb6434e32031", size = 41340, upload-time = "2026-05-22T14:48:02.405Z" },
 ]
 
 [[package]]
