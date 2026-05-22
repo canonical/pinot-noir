@@ -215,7 +215,6 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
             service, backport_settings, valid_milestones, Merge.TYPE_BACKPORT, bugs_to_import
         )
 
-    new_merges: list[Merge] = []
     for bug_id, (bug_record, milestone, merge_type) in bugs_to_import.items():
         try:
             full_bug = service.get_bug(bug_id, provider_name="launchpad")
@@ -224,11 +223,19 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
         if full_bug is None:
             continue
         merge = merge_from_bug(bug_id, full_bug, milestone, merge_type)
-        if merge is not None:
-            new_merges.append(merge)
-
-    Merge.objects.all().delete()
-    Merge.objects.bulk_create(new_merges)
+        if merge is None:
+            continue
+        Merge.objects.update_or_create(
+            lp_bug=merge.lp_bug,
+            defaults={
+                "package": merge.package,
+                "merge_type": merge.merge_type,
+                "assignee": merge.assignee,
+                "assignee_user": merge.assignee_user,
+                "milestone": merge.milestone,
+                "status": merge.status,
+            },
+        )
 
 
 @task()
@@ -250,7 +257,6 @@ def refresh_reviews(username: str) -> None:
 
     marker_usernames = set(LPReviewMarkerUser.objects.values_list("username", flat=True))
 
-    new_reviews: list[Review] = []
     for lp_user in LPUser.objects.all():
         try:
             merge_requests = service.get_merge_requests_from_user(
@@ -274,24 +280,21 @@ def refresh_reviews(username: str) -> None:
                         reviewer_user = matched_lp_user
                         break
 
-                new_reviews.append(
-                    Review(
-                        package=package,
-                        release_version=release_version,
-                        mp_url=mr.web_url or "",
-                        source_branch=mr.source_branch or "",
-                        lines_added=mr.added_lines,
-                        lines_removed=mr.removed_lines,
-                        reviewer=reviewer_username,
-                        reviewer_user=reviewer_user,
-                        submitter=lp_user.username,
-                        submitter_user=lp_user,
-                        status=status,
-                    )
+                Review.objects.update_or_create(
+                    mp_url=mr.web_url or "",
+                    defaults={
+                        "package": package,
+                        "release_version": release_version,
+                        "source_branch": mr.source_branch or "",
+                        "lines_added": mr.added_lines,
+                        "lines_removed": mr.removed_lines,
+                        "reviewer": reviewer_username,
+                        "reviewer_user": reviewer_user,
+                        "submitter": lp_user.username,
+                        "submitter_user": lp_user,
+                        "status": status,
+                    },
                 )
-
-    Review.objects.all().delete()
-    Review.objects.bulk_create(new_reviews)
 
     refresh_reviews.using(
         run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS)
