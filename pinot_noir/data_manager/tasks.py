@@ -9,6 +9,7 @@ from django.utils import timezone
 from django_tasks import task
 from django_tasks_db.models import DBTaskResult
 from ubq import QueryService
+from ubq.errors import RequestTimeoutError
 from ubq.models import BugSubmissionRecord, ProviderCredentials, UserRecord
 
 from pinot_noir.data_manager.helpers import (
@@ -216,7 +217,10 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
 
     new_merges: list[Merge] = []
     for bug_id, (bug_record, milestone, merge_type) in bugs_to_import.items():
-        full_bug = service.get_bug(bug_id, provider_name="launchpad")
+        try:
+            full_bug = service.get_bug(bug_id, provider_name="launchpad")
+        except RequestTimeoutError:
+            continue
         if full_bug is None:
             continue
         merge = merge_from_bug(bug_id, full_bug, milestone, merge_type)
@@ -248,10 +252,13 @@ def refresh_reviews(username: str) -> None:
 
     new_reviews: list[Review] = []
     for lp_user in LPUser.objects.all():
-        merge_requests = service.get_merge_requests_from_user(
-            user_id=lp_user.username,
-            provider_name="launchpad",
-        )
+        try:
+            merge_requests = service.get_merge_requests_from_user(
+                user_id=lp_user.username,
+                provider_name="launchpad",
+            )
+        except RequestTimeoutError:
+            continue
         for mr in merge_requests:
             package = package_from_url(mr.web_url or "")
             release_version = release_from_branch(mr.target_branch)
@@ -303,7 +310,10 @@ def refresh_single_merge(username: str, bug_id: int) -> None:
 
     service = _get_launchpad_service_for_user(username)
 
-    full_bug = service.get_bug(str(bug_id), provider_name="launchpad")
+    try:
+        full_bug = service.get_bug(str(bug_id), provider_name="launchpad")
+    except RequestTimeoutError:
+        return
     if full_bug is None:
         return
 

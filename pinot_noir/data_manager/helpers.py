@@ -2,6 +2,7 @@
 
 from debian.debian_support import Version
 from ubq import QueryService
+from ubq.errors import RequestTimeoutError
 from ubq.models import BugRecord, BugSearchRecord, BugSubmissionRecord, UserRecord
 
 from pinot_noir.data_manager.models import (
@@ -74,13 +75,16 @@ class MergePackageVersionInfo:
 
     def _get_version_string(self, archive: str, series: str, pocket: str = "Release") -> str:
         """Get package version string for archive, series, and pocket."""
-        package_version = self._queryService.get_version(
-            self._package_name,
-            archive=archive,
-            series=series,
-            pocket=pocket,
-            provider_name="launchpad",
-        )
+        try:
+            package_version = self._queryService.get_version(
+                self._package_name,
+                archive=archive,
+                series=series,
+                pocket=pocket,
+                provider_name="launchpad",
+            )
+        except RequestTimeoutError:
+            return ""
         if package_version:
             return package_version.version_string
         return ""
@@ -214,16 +218,19 @@ def collect_bugs_for_type(
     for raw_milestone in valid_milestones:
         lp_milestone = f"ubuntu-{raw_milestone}"
         for status in (None, "Fix Released"):
-            for bug in service.search_bugs(
-                BugSearchRecord(
+            try:
+                for bug in service.search_bugs(
+                    BugSearchRecord(
+                        provider_name="launchpad",
+                        tags=filter_settings.tags,
+                        milestone=lp_milestone,
+                        status=status,
+                    ),
                     provider_name="launchpad",
-                    tags=filter_settings.tags,
-                    milestone=lp_milestone,
-                    status=status,
-                ),
-                provider_name="launchpad",
-            ):
-                bugs.setdefault(bug.id, (bug, raw_milestone, merge_type))
+                ):
+                    bugs.setdefault(bug.id, (bug, raw_milestone, merge_type))
+            except RequestTimeoutError:
+                continue
 
 
 def merge_from_bug(
