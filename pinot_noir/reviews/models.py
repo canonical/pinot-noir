@@ -40,6 +40,10 @@ class Review(models.Model):
         related_name="submitted_reviews",
     )
 
+    source_branch = models.CharField(max_length=500, blank=True)
+    lines_added = models.IntegerField(null=True, blank=True)
+    lines_removed = models.IntegerField(null=True, blank=True)
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NEEDS_REVIEW)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -52,3 +56,9 @@ class Review(models.Model):
         if self.release_version:
             return f"{self.package} ({self.release_version}) - {self.status}"
         return f"{self.package} - {self.status}"
+
+    @property
+    def source_branch_short(self) -> str:
+        if not self.source_branch:
+            return ""
+        return self.source_branch.rsplit("/", 1)[-1]

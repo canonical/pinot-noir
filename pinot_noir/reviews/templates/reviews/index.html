@@ -68,18 +68,21 @@
                 <table aria-label="Reviews Status">
                     <thead>
                         <tr>
+                            <th aria-sort="none">Branch</th>
                             <th aria-sort="none">Package</th>
                             <th aria-sort="none">Release</th>
                             <th aria-sort="none">Submitter</th>
                             <th aria-sort="none">Reviewer</th>
+                            <th class="u-align--center" aria-sort="none">Lines</th>
                             <th class="u-align--center" aria-sort="none">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for review in reviews %}
                         <tr>
+                            <td class="u-truncate">{% if review.source_branch %}<a href="{{ review.mp_url }}" target="_blank" rel="noopener noreferrer">{{ review.source_branch_short }}</a>{% else %}&mdash;{% endif %}</td>
                             <th class="u-truncate">
-                                <a href="{{ review.mp_url }}" target="_blank" rel="noopener noreferrer">{{ review.package }}</a>
+                                {{ review.package }}
                             </th>
                             <td>{% if review.release_version %}{{ review.release_version }}{% else %}&mdash;{% endif %}</td>
                             <td>
@@ -106,6 +109,20 @@
                                     &mdash;
                                 {% endif %}
                             </td>
+                            <td class="u-align--center" style="white-space: nowrap;">
+                                {% if review.lines_added is not None or review.lines_removed is not None %}
+                                    {% with added=review.lines_added|default:0 removed=review.lines_removed|default:0 %}
+                                        {% if added == 0 and removed == 0 %}
+                                            <span style="color: #0e8420;">+0</span>
+                                        {% else %}
+                                            {% if added %}<span style="color: #0e8420;">+{{ added }}</span>{% endif %}
+                                            {% if removed %}<span style="color: #c7162b;">-{{ removed }}</span>{% endif %}
+                                        {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
                             <td class="u-align--center">
                                 {% if review.status == "Approved" %}
                                     <span class="p-chip--positive is-inline">{{ review.status }}</span>
@@ -122,11 +139,11 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5">No reviews scheduled.</td>
+                            <td colspan="7">No reviews scheduled.</td>
                         </tr>
                         {% endfor %}
                         <tr class="js-no-filter-results" hidden>
-                            <td colspan="5">No matching reviews found.</td>
+                            <td colspan="7">No matching reviews found.</td>
                         </tr>
                     </tbody>
                 </table>
