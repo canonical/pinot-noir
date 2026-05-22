@@ -25,14 +25,16 @@ def _make_info(
 ) -> MergePackageVersionInfo:
     """Build a MergePackageVersionInfo with the given versions already loaded."""
     versions = {
-        (devel_series, "Proposed"): _mock_version(proposed),
-        (devel_series, "Release"): _mock_version(release),
-        ("debian-sid", "Release"): _mock_version(unstable),
-        ("debian-experimental", "Release"): _mock_version(experimental),
+        ("ubuntu", devel_series, "Proposed"): _mock_version(proposed),
+        ("ubuntu", devel_series, "Release"): _mock_version(release),
+        ("debian", "sid", "Release"): _mock_version(unstable),
+        ("debian", "experimental", "Release"): _mock_version(experimental),
     }
     service = MagicMock()
-    service.get_version.side_effect = lambda pkg, series, pocket=None, provider_name=None: (
-        versions.get((series, pocket))
+    service.get_version.side_effect = (
+        lambda pkg, archive=None, series=None, pocket=None, provider_name=None: (
+            versions.get((archive, series, pocket))
+        )
     )
     info = MergePackageVersionInfo("testpkg", devel_series, service)
     info.refresh_versions()
@@ -185,14 +187,16 @@ def _make_merge_service(
 ) -> MagicMock:
     """Return a mocked QueryService serving the given package versions."""
     versions = {
-        (release_mock.adjective, "Proposed"): _mock_version(proposed),
-        (release_mock.adjective, "Release"): _mock_version(release_ver),
-        ("debian-sid", "Release"): _mock_version(unstable),
-        ("debian-experimental", "Release"): _mock_version(experimental),
+        ("ubuntu", release_mock.adjective, "Proposed"): _mock_version(proposed),
+        ("ubuntu", release_mock.adjective, "Release"): _mock_version(release_ver),
+        ("debian", "sid", "Release"): _mock_version(unstable),
+        ("debian", "experimental", "Release"): _mock_version(experimental),
     }
     service = MagicMock()
-    service.get_version.side_effect = lambda pkg, series, pocket=None, provider_name=None: (
-        versions.get((series, pocket))
+    service.get_version.side_effect = (
+        lambda pkg, archive=None, series=None, pocket=None, provider_name=None: (
+            versions.get((archive, series, pocket))
+        )
     )
     return service
 
