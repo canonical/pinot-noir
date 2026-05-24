@@ -13,6 +13,7 @@ dependencies = [
     "python-debian>=1.1.0",
     "pyyaml>=6.0",
     "ubq>=0.5.1",
+    "whitenoise>=6.12.0",
 ]
 
 [dependency-groups]

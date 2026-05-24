@@ -389,6 +389,7 @@ dependencies = [
     { name = "python-debian" },
     { name = "pyyaml" },
     { name = "ubq" },
+    { name = "whitenoise" },
 ]
 
 [package.dev-dependencies]
@@ -412,6 +413,7 @@ requires-dist = [
     { name = "python-debian", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ubq", specifier = ">=0.5.1" },
+    { name = "whitenoise", specifier = ">=6.12.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -684,4 +686,13 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/da/54/82866d8c2bf602ed9df52c8f8b7a45e94f8c2441b3d1e9e46d34f0e3270f/wadllib-2.0.0.tar.gz", hash = "sha256:1edbaf23e4fa34fea70c9b380baa2a139b1086ae489ebcccc4b3b65fc9737427", size = 65960, upload-time = "2024-10-11T13:32:52.169Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/27/a1/3789e82241db565f25e2c6a69c6ebe79f3db84431e93760a4abb451822bd/wadllib-2.0.0-py3-none-any.whl", hash = "sha256:f8e0fc4f19c2c96b3ca8a091f04c86ca196ec9590d44c4d864320aa9533473ea", size = 61733, upload-time = "2024-10-11T13:32:49.289Z" },
+]
+
+[[package]]
+name = "whitenoise"
+version = "6.12.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/2a/55b3f3a4ec326cd077c1c3defeee656b9298372a69229134d930151acd01/whitenoise-6.12.0.tar.gz", hash = "sha256:f723ebb76a112e98816ff80fcea0a6c9b8ecde835f8ddda25df7a30a3c2db6ad", size = 26841, upload-time = "2026-02-27T00:05:42.028Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/eb/d5583a11486211f3ebd4b385545ae787f32363d453c19fffd81106c9c138/whitenoise-6.12.0-py3-none-any.whl", hash = "sha256:fc5e8c572e33ebf24795b47b6a7da8da3c00cff2349f5b04c02f28d0cc5a3cc2", size = 20302, upload-time = "2026-02-27T00:05:40.086Z" },
 ]
