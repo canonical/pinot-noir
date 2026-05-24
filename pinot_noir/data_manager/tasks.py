@@ -1,5 +1,6 @@
 """Periodic data-refresh tasks for the data_manager application."""
 
+import logging
 from datetime import timedelta
 from typing import Any
 
@@ -36,6 +37,9 @@ from pinot_noir.reviews.models import Review
 
 REFRESH_INTERVAL_HOURS = 6
 SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
+PRUNE_INTERVAL_HOURS = 24
+PRUNE_AGE_DAYS = 7
+STUCK_RUNNING_HOURS = 24
 
 
 def _get_devel_release() -> UbuntuRelease:
@@ -403,3 +407,44 @@ def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
     )
 
     return len(to_add), len(to_remove)
+
+
+@task()
+def prune_task_results() -> None:
+    """Delete old completed/failed task results and reset stuck running tasks.
+
+    Removes ``SUCCESSFUL`` and ``FAILED`` ``DBTaskResult`` rows older than
+    ``PRUNE_AGE_DAYS`` days.  Tasks stuck in ``RUNNING`` status for longer than
+    ``STUCK_RUNNING_HOURS`` hours are reset to ``FAILED``.
+
+    Re-enqueues itself to run again after ``PRUNE_INTERVAL_HOURS`` hours.
+    """
+    # Prevent duplicate scheduled prune tasks
+    DBTaskResult.objects.filter(
+        task_path=prune_task_results.module_path,
+        status="READY",
+    ).delete()
+
+    cutoff = timezone.now() - timedelta(days=PRUNE_AGE_DAYS)
+    deleted_count, _ = DBTaskResult.objects.filter(
+        status__in=["SUCCESSFUL", "FAILED"],
+        finished_at__lt=cutoff,
+    ).delete()
+
+    stuck_cutoff = timezone.now() - timedelta(hours=STUCK_RUNNING_HOURS)
+    stuck_count = DBTaskResult.objects.filter(
+        status="RUNNING",
+        started_at__lt=stuck_cutoff,
+    ).update(status="FAILED")
+
+    if deleted_count or stuck_count:
+        logger = logging.getLogger("django_tasks_db")
+        logger.info(
+            "Pruned %d old task results, reset %d stuck tasks.",
+            deleted_count,
+            stuck_count,
+        )
+
+    prune_task_results.using(
+        run_after=timezone.now() + timedelta(hours=PRUNE_INTERVAL_HOURS),
+    ).enqueue()
