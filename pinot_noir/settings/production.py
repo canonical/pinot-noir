@@ -12,6 +12,7 @@ Required environment variables:
 Optional environment variables:
   DB_HOST        - PostgreSQL host (default: localhost)
   DB_PORT        - PostgreSQL port (default: 5432)
+  CSRF_TRUSTED_ORIGINS - Comma-separated list of trusted origins (e.g. https://yourdomain.com)
 """
 
 import os
@@ -23,6 +24,8 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = False
 
 ALLOWED_HOSTS = os.environ["ALLOWED_HOSTS"].split(",")
+
+CSRF_TRUSTED_ORIGINS = os.environ["CSRF_TRUSTED_ORIGINS"].split(",")
 
 
 # Database
