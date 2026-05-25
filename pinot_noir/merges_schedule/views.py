@@ -20,7 +20,7 @@ def sort_merges_default(merges):
         key=lambda m: (
             m.milestone or "",
             STATUS_ORDER.get(m.status, -1),
-            m.assignee_user.username if m.assignee_user else "",
+            m.assignee_user.username if m.assignee_user else m.assignee,
         ),
     )
 
