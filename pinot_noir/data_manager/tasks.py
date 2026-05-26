@@ -355,7 +355,12 @@ def queue_single_merge_refresh(
     bug_id: int,
     interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
 ) -> None:
-    """Enqueue a refresh for *bug_id* and re-schedule this task after *interval_hours* hours."""
+    """Enqueue a refresh for *bug_id* and re-schedule this task after *interval_hours* hours.
+
+    If the Merge no longer exists (e.g. it was invalidated), the cycle stops.
+    """
+    if not Merge.objects.filter(lp_bug=bug_id).exists():
+        return
     refresh_single_merge.enqueue(username, bug_id)
     queue_single_merge_refresh.using(
         run_after=timezone.now() + timedelta(hours=interval_hours),
