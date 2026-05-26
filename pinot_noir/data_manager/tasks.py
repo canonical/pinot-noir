@@ -324,6 +324,11 @@ def refresh_single_merge(username: str, bug_id: int) -> None:
     if full_bug is None:
         return
 
+    if full_bug.bug_tasks and full_bug.bug_tasks[0].status == "Invalid":
+        Merge.objects.filter(lp_bug=bug_id).delete()
+        return
+
+
     merge_type = existing.merge_type if existing else Merge.TYPE_MERGE
     milestone = existing.milestone if existing else ""
 
