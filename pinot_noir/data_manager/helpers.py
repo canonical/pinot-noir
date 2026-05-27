@@ -19,12 +19,13 @@ LP_STATUS_MAP: dict[str, str] = {
     "Work in progress": Review.STATUS_WORK_IN_PROGRESS,
     "Needs review": Review.STATUS_NEEDS_REVIEW,
     "Approved": Review.STATUS_APPROVED,
-    "Rejected": Review.STATUS_NEEDS_FIXING,
     "Code failed to merge": Review.STATUS_NEEDS_FIXING,
     "Queued": Review.STATUS_UNDER_REVIEW,
     "Merged": Review.STATUS_APPROVED,
-    "Superseded": Review.STATUS_NEEDS_FIXING,
 }
+
+# Launchpad merge-proposal statuses that should not appear on the review board.
+LP_REVIEW_SKIP_STATUSES: frozenset[str] = frozenset({"Rejected", "Superseded"})
 
 # Map Launchpad bug task status values to Merge status choices.
 LP_BUG_STATUS_MAP: dict[str, str] = {

@@ -14,6 +14,7 @@ from ubq.errors import RequestTimeoutError
 from ubq.models import BugSubmissionRecord, ProviderCredentials, UserRecord
 
 from pinot_noir.data_manager.helpers import (
+    LP_REVIEW_SKIP_STATUSES,
     LP_STATUS_MAP,
     collect_bugs_for_type,
     merge_from_bug,
@@ -270,6 +271,9 @@ def refresh_reviews(username: str) -> None:
         except RequestTimeoutError:
             continue
         for mr in merge_requests:
+            if mr.status in LP_REVIEW_SKIP_STATUSES:
+                continue
+
             package = package_from_url(mr.web_url or "")
             release_version = release_from_branch(mr.target_branch)
             status = LP_STATUS_MAP.get(mr.status or "", Review.STATUS_NEEDS_REVIEW)
