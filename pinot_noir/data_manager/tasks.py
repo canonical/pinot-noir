@@ -220,6 +220,7 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
             service, backport_settings, valid_milestones, Merge.TYPE_BACKPORT, bugs_to_import
         )
 
+    imported_bug_ids: set[int] = set()
     for bug_id, (bug_record, milestone, merge_type) in bugs_to_import.items():
         try:
             full_bug = service.get_bug(bug_id, provider_name="launchpad")
@@ -241,6 +242,10 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
                 "status": merge.status,
             },
         )
+        imported_bug_ids.add(merge.lp_bug)
+
+    if imported_bug_ids:
+        Merge.objects.exclude(lp_bug__in=imported_bug_ids).delete()
 
 
 @task()
