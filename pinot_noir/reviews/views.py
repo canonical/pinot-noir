@@ -18,10 +18,10 @@ def sort_reviews_default(reviews):
         reviews,
         key=lambda r: (
             STATUS_ORDER.get(r.status, -1),
+            r.reviewer_user.username if r.reviewer_user else r.reviewer,
             r.submitter_user.username if r.submitter_user else r.submitter,
             r.package,
             r.release_version or "",
-            r.reviewer_user.username if r.reviewer_user else r.reviewer,
         ),
     )
 
