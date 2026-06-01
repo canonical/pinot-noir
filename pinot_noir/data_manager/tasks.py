@@ -267,6 +267,8 @@ def refresh_reviews(username: str) -> None:
 
     marker_usernames = set(LPReviewMarkerUser.objects.values_list("username", flat=True))
 
+    imported_mp_urls: set[str] = set()
+
     for lp_user in LPUser.objects.all():
         try:
             merge_requests = service.get_merge_requests_from_user(
@@ -293,8 +295,9 @@ def refresh_reviews(username: str) -> None:
                         reviewer_user = matched_lp_user
                         break
 
+                mp_url = mr.web_url or ""
                 Review.objects.update_or_create(
-                    mp_url=mr.web_url or "",
+                    mp_url=mp_url,
                     defaults={
                         "package": package,
                         "release_version": release_version,
@@ -308,6 +311,10 @@ def refresh_reviews(username: str) -> None:
                         "status": status,
                     },
                 )
+                imported_mp_urls.add(mp_url)
+
+    if imported_mp_urls:
+        Review.objects.exclude(mp_url__in=imported_mp_urls).delete()
 
     refresh_reviews.using(
         run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS)
