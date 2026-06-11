@@ -54,14 +54,11 @@
                         <div class="p-panel__content">
                             <div class="p-side-navigation--icons" id="drawer-icons">
                                 <nav aria-label="Main">
-                                    <ul class="p-side-navigation__list">
+                                    {% for entry in nav_entries %}
                                         <li class="p-side-navigation__item">
-                                            <a class="p-side-navigation__link" href="/merges-schedule"><i class="p-icon--circle-of-friends is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Merge Schedule</span></a>
+                                            <a class="p-side-navigation__link{% if entry.is_active %} is-active{% endif %}" href="{{ entry.url }}"><i class="p-icon--{{ entry.icon }} is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">{{ entry.label }}</span></a>
                                         </li>
-                                        <li class="p-side-navigation__item">
-                                            <a class="p-side-navigation__link" href="/reviews"><i class="p-icon--circle-of-friends is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Reviews</span></a>
-                                        </li>
-                                    </ul>
+                                    {% endfor %}
                                 </nav>
                             </div>
                         </div>
