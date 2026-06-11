@@ -248,6 +248,8 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
     if imported_bug_ids:
         Merge.objects.exclude(lp_bug__in=imported_bug_ids).delete()
 
+    PageMetadata.touch("merges-schedule")
+
 
 @task()
 def refresh_reviews(username: str) -> None:
