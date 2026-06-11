@@ -149,6 +149,11 @@
                 </table>
             </div>
         </div>
+        <div class="u-fixed-width">
+            <p class="u-text--muted u-align--right">
+                Last refreshed <time datetime="{{ page_meta.last_refreshed_at|date:'c' }}" title="{{ page_meta.last_refreshed_at|date:'Y-m-d H:i:s e' }}">{{ page_meta.last_refreshed_at|timesince }} ago</time>.
+            </p>
+        </div>
     </div>
 </main>
 {% endblock %}
