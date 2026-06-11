@@ -16,18 +16,16 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from django.views.generic import RedirectView
 
 from pinot_noir.launchpad import views as launchpad_views
-from pinot_noir.merges_schedule import views as merges_schedule_views
-from pinot_noir.reviews import views as reviews_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", RedirectView.as_view(url="/merges-schedule", permanent=False), name="root-redirect"),
-    path("merges-schedule", merges_schedule_views.index, name="merges-schedule"),
-    path("reviews", reviews_views.index, name="reviews"),
+    path("", include("pinot_noir.merges_schedule.urls")),
+    path("", include("pinot_noir.reviews.urls")),
     path(
         "launchpad/bug/new/<str:bug_type>",
         launchpad_views.new_bug,
