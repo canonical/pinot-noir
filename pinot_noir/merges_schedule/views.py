@@ -1,8 +1,11 @@
 from django.shortcuts import render
 
 from pinot_noir.launchpad.models import UbuntuRelease
+from pinot_noir.pages.models import PageMetadata
 
 from .models import Merge
+
+PAGE_SLUG = "merges-schedule"
 
 # Custom status ordering used both for sorting and for constructing the statuses list
 STATUS_ORDER = {
@@ -49,6 +52,7 @@ def index(request):
         "assignees": assignees,
         "statuses": statuses,
         "ubuntu_releases": ubuntu_releases,
+        "page_meta": PageMetadata.objects.filter(slug=PAGE_SLUG).first(),
     }
 
     return render(request, "merges_schedule/index.html", context)

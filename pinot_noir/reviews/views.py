@@ -1,6 +1,10 @@
 from django.shortcuts import render
 
+from pinot_noir.pages.models import PageMetadata
+
 from .models import Review
+
+PAGE_SLUG = "reviews"
 
 STATUS_ORDER = {
     Review.STATUS_NEEDS_REVIEW: 0,
@@ -55,6 +59,7 @@ def index(request):
         "reviewers": reviewers,
         "submitters": submitters,
         "statuses": statuses,
+        "page_meta": PageMetadata.objects.filter(slug=PAGE_SLUG).first(),
     }
 
     return render(request, "reviews/index.html", context)
