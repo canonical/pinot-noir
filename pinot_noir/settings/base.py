@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     # Pinot Noir base applications
     "pinot_noir.launchpad",
     "pinot_noir.data_manager",
+    "pinot_noir.pages",
     # Pinot Noir web page applications
     "pinot_noir.merges_schedule",
     "pinot_noir.reviews",
@@ -54,6 +55,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "pinot_noir.pages.context_processors.nav_entries",
             ],
         },
     },
@@ -109,6 +111,24 @@ TASKS = {
         "BACKEND": "django_tasks_db.DatabaseBackend",
     }
 }
+
+# Sidebar navigation. Add a new dict here when introducing a new data page.
+# `slug` is the PageMetadata key for that page; `url_name` is a namespaced
+# Django URL name resolved at request time.
+PINOT_NOIR_NAV = [
+    {
+        "slug": "merges-schedule",
+        "label": "Merge Schedule",
+        "url_name": "merges_schedule:index",
+        "icon": "circle-of-friends",
+    },
+    {
+        "slug": "reviews",
+        "label": "Reviews",
+        "url_name": "reviews:index",
+        "icon": "circle-of-friends",
+    },
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
