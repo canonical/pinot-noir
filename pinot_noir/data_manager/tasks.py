@@ -34,6 +34,7 @@ from pinot_noir.data_manager.models import (
 )
 from pinot_noir.launchpad.models import LPUser, UbuntuRelease
 from pinot_noir.merges_schedule.models import Merge
+from pinot_noir.pages.models import PageMetadata
 from pinot_noir.reviews.models import Review
 
 REFRESH_INTERVAL_HOURS = 6
@@ -315,6 +316,8 @@ def refresh_reviews(username: str) -> None:
 
     if imported_mp_urls:
         Review.objects.exclude(mp_url__in=imported_mp_urls).delete()
+
+    PageMetadata.touch("reviews")
 
     refresh_reviews.using(
         run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS)
