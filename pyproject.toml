@@ -13,7 +13,7 @@ dependencies = [
     "psycopg[binary]>=3.3.4",
     "python-debian>=1.1.0",
     "pyyaml>=6.0",
-    "ubq>=0.5.1",
+    "ubq>=0.5.2",
     "whitenoise>=6.12.0",
 ]
 
