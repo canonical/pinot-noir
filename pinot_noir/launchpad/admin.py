@@ -15,7 +15,7 @@ class LPUserAdminForm(forms.ModelForm):
 
     class Meta:
         model = LPUser
-        fields = ["username", "email_md5"]
+        fields = ["username", "email_md5", "is_team_member", "is_review_marker"]
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -31,10 +31,24 @@ class LPUserAdminForm(forms.ModelForm):
 @admin.register(LPUser)
 class LPUserAdmin(admin.ModelAdmin):
     form = LPUserAdminForm
-    list_display = ("username", "email_md5", "gravatar_preview")
+    list_display = (
+        "username",
+        "email_md5",
+        "is_team_member",
+        "is_review_marker",
+        "gravatar_preview",
+    )
+    list_filter = ("is_team_member", "is_review_marker")
     search_fields = ("username",)
     readonly_fields = ("email_md5", "gravatar_preview")
-    fields = ("username", "email", "email_md5", "gravatar_preview")
+    fields = (
+        "username",
+        "email",
+        "email_md5",
+        "is_team_member",
+        "is_review_marker",
+        "gravatar_preview",
+    )
 
     def gravatar_preview(self, obj):
         if not obj or not obj.email_md5:

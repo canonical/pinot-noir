@@ -10,6 +10,12 @@ class LPUser(models.Model):
     username = models.CharField(max_length=100, primary_key=True)
     email_md5 = models.CharField(max_length=32, blank=True, null=True)
 
+    # Whether this user is a member of the team
+    is_team_member = models.BooleanField(default=False)
+
+    # Whether this user, when assigned to a review, makes the review appear on the board
+    is_review_marker = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = "Launchpad user"
         verbose_name_plural = "Launchpad users"

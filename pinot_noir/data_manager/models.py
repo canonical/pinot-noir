@@ -64,12 +64,6 @@ class BackportBugPackageInfo(models.Model):
         return [name.strip() for name in self.package_names_combined.split(",")]
 
 
-class LPReviewMarkerUser(models.Model):
-    """A launchpad user that, when assigned to a review, makes it appear on the review board."""
-
-    username = models.CharField(max_length=100, primary_key=True)
-
-
 class MergeBugFilterSettings(models.Model):
     """Sitewide settings defining required merge board bug attributes."""
 

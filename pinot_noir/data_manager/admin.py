@@ -13,7 +13,6 @@ from pinot_noir.data_manager.tasks import (
 from .models import (
     BackportBugFilterSettings,
     BackportBugPackageInfo,
-    LPReviewMarkerUser,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
     UserTokens,
@@ -121,12 +120,6 @@ class MergeBugPackageInfoAdmin(admin.ModelAdmin):
 class BackportBugPackageInfoAdmin(admin.ModelAdmin):
     list_display = ("name", "milestone_offset", "package_names_combined", "bug_filed_this_cycle")
     search_fields = ("name", "package_names_combined")
-
-
-@admin.register(LPReviewMarkerUser)
-class LPReviewMarkerUserAdmin(admin.ModelAdmin):
-    list_display = ("username",)
-    search_fields = ("username",)
 
 
 @admin.register(MergeBugFilterSettings)
