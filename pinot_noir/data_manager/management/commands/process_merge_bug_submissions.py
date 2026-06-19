@@ -48,8 +48,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--output-json",
             help=(
-                "Path to write prepared submissions as JSON "
-                "(requires --merges or --backports)."
+                "Path to write prepared submissions as JSON " "(requires --merges or --backports)."
             ),
         )
         parser.add_argument(
