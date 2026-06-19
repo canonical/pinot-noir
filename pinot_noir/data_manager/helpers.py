@@ -3,7 +3,13 @@
 from debian.debian_support import Version
 from ubq import QueryService
 from ubq.errors import RequestTimeoutError
-from ubq.models import BugRecord, BugSearchRecord, BugSubmissionRecord, UserRecord
+from ubq.models import (
+    BugRecord,
+    BugSearchRecord,
+    BugSubmissionRecord,
+    MergeRequestRecord,
+    UserRecord,
+)
 
 from pinot_noir.data_manager.models import (
     BackportBugPackageInfo,
@@ -25,6 +31,13 @@ LP_STATUS_MAP: dict[str, str] = {
 
 # Launchpad merge-proposal statuses that should not appear on the review board.
 LP_REVIEW_SKIP_STATUSES: frozenset[str] = frozenset({"Rejected", "Superseded"})
+
+# Map Launchpad code-review vote values to Review status choices.
+LP_VOTE_STATUS_MAP: dict[str, str] = {
+    "Needs Fixing": Review.STATUS_NEEDS_FIXING,
+    "Needs Information": Review.STATUS_NEEDS_INFORMATION,
+    "Approve": Review.STATUS_APPROVED,
+}
 
 # Map Launchpad bug task status values to Merge status choices.
 LP_BUG_STATUS_MAP: dict[str, str] = {
@@ -170,6 +183,51 @@ def release_from_branch(branch: str | None) -> str:
         if part == "ubuntu" and i + 1 < len(parts):
             return parts[i + 1].split("-")[0]
     return ""
+
+
+def review_status_from_merge_request(
+    mr: MergeRequestRecord,
+    team_usernames: set[str],
+) -> str:
+    """Determine the Review status for a Launchpad merge proposal.
+
+    The Launchpad queue status is mapped first.  When it maps to
+    ``STATUS_NEEDS_REVIEW`` the individual review votes are inspected to check for
+    a more specific status: needs fixing, needs information, or team/community
+    approval. A voter listed in *team_usernames* counts as a team approval;
+    any other approving voter counts as a community approval. Blocking votes
+    take precedence over approvals.
+    """
+    status = LP_STATUS_MAP.get(mr.status or "", Review.STATUS_NEEDS_REVIEW)
+    if status != Review.STATUS_NEEDS_REVIEW:
+        return status
+
+    has_needs_fixing = False
+    has_needs_information = False
+    has_team_approval = False
+    has_community_approval = False
+
+    for vote in mr.votes:
+        mapped = LP_VOTE_STATUS_MAP.get(vote.vote or "")
+        if mapped == Review.STATUS_NEEDS_FIXING:
+            has_needs_fixing = True
+        elif mapped == Review.STATUS_NEEDS_INFORMATION:
+            has_needs_information = True
+        elif mapped == Review.STATUS_APPROVED:
+            if vote.voter.username in team_usernames:
+                has_team_approval = True
+            else:
+                has_community_approval = True
+
+    if has_needs_fixing:
+        return Review.STATUS_NEEDS_FIXING
+    if has_needs_information:
+        return Review.STATUS_NEEDS_INFORMATION
+    if has_team_approval:
+        return Review.STATUS_TEAM_APPROVED
+    if has_community_approval:
+        return Review.STATUS_COMMUNITY_APPROVED
+    return Review.STATUS_NEEDS_REVIEW
 
 
 def milestones_for_release(version: str) -> set[str]:

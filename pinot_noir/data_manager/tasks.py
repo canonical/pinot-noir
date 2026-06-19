@@ -15,7 +15,6 @@ from ubq.models import BugSubmissionRecord, ProviderCredentials, UserRecord
 
 from pinot_noir.data_manager.helpers import (
     LP_REVIEW_SKIP_STATUSES,
-    LP_STATUS_MAP,
     collect_bugs_for_type,
     merge_from_bug,
     milestones_for_release,
@@ -23,11 +22,11 @@ from pinot_noir.data_manager.helpers import (
     prepare_backport_bugs_for_all_packages,
     prepare_merge_bugs_for_all_packages,
     release_from_branch,
+    review_status_from_merge_request,
 )
 from pinot_noir.data_manager.models import (
     BackportBugFilterSettings,
     BackportBugPackageInfo,
-    LPReviewMarkerUser,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
     UserTokens,
@@ -268,11 +267,16 @@ def refresh_reviews(username: str) -> None:
 
     service = _get_launchpad_service_for_user(username)
 
-    marker_usernames = set(LPReviewMarkerUser.objects.values_list("username", flat=True))
+    marker_usernames = set(
+        LPUser.objects.filter(is_review_marker=True).values_list("username", flat=True)
+    )
+
+    team_users = set(LPUser.objects.filter(is_team_member=True))
+    team_usernames = set(user.username for user in team_users)
 
     imported_mp_urls: set[str] = set()
 
-    for lp_user in LPUser.objects.all():
+    for lp_user in team_users:
         try:
             merge_requests = service.get_merge_requests_from_user(
                 user_id=lp_user.username,
@@ -286,7 +290,7 @@ def refresh_reviews(username: str) -> None:
 
             package = package_from_url(mr.web_url or "")
             release_version = release_from_branch(mr.target_branch)
-            status = LP_STATUS_MAP.get(mr.status or "", Review.STATUS_NEEDS_REVIEW)
+            status = review_status_from_merge_request(mr, team_usernames)
 
             reviewer_username = ""
             reviewer_user = None
