@@ -32,11 +32,15 @@ class RefreshReviewsTests(TestCase):
         LPUser.objects.create(username="ubuntu-server", is_review_marker=True)
 
         service = MagicMock()
-        service.get_merge_requests_from_user.side_effect = lambda user_id, **kw: [
-            _mr("https://lp.test/merge/1", "Rejected"),
-            _mr("https://lp.test/merge/2", "Superseded"),
-            _mr("https://lp.test/merge/3", "Needs review"),
-        ] if user_id == "graysonwolf" else []
+        service.get_merge_requests_from_user.side_effect = lambda user_id, **kw: (
+            [
+                _mr("https://lp.test/merge/1", "Rejected"),
+                _mr("https://lp.test/merge/2", "Superseded"),
+                _mr("https://lp.test/merge/3", "Needs review"),
+            ]
+            if user_id == "graysonwolf"
+            else []
+        )
         get_service_mock.return_value = service
 
         refresh_reviews.call("alice")
@@ -50,9 +54,7 @@ class RefreshReviewsTests(TestCase):
 
 def _vote(username, vote, voted_at=None):
     """Build a minimal merge-request vote namespace."""
-    return SimpleNamespace(
-        voter=SimpleNamespace(username=username), vote=vote, voted_at=voted_at
-    )
+    return SimpleNamespace(voter=SimpleNamespace(username=username), vote=vote, voted_at=voted_at)
 
 
 class ReviewStatusFromMergeRequestTests(TestCase):
