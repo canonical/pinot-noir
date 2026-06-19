@@ -8,6 +8,7 @@ from ubq.models import (
     BugSearchRecord,
     BugSubmissionRecord,
     MergeRequestRecord,
+    MergeRequestVoteRecord,
     UserRecord,
 )
 
@@ -196,18 +197,31 @@ def review_status_from_merge_request(
     a more specific status: needs fixing, needs information, or team/community
     approval. A voter listed in *team_usernames* counts as a team approval;
     any other approving voter counts as a community approval. Blocking votes
-    take precedence over approvals.
+    take precedence over approvals. When a voter has cast multiple votes, only
+    their latest vote is considered.
     """
     status = LP_STATUS_MAP.get(mr.status or "", Review.STATUS_NEEDS_REVIEW)
     if status != Review.STATUS_NEEDS_REVIEW:
         return status
+
+    latest_votes: dict[str, MergeRequestVoteRecord] = {}
+    for vote in mr.votes:
+        username = vote.voter.username
+        current = latest_votes.get(username)
+        if current is None:
+            latest_votes[username] = vote
+            continue
+        if vote.voted_at is not None and (
+            current.voted_at is None or vote.voted_at >= current.voted_at
+        ):
+            latest_votes[username] = vote
 
     has_needs_fixing = False
     has_needs_information = False
     has_team_approval = False
     has_community_approval = False
 
-    for vote in mr.votes:
+    for vote in latest_votes.values():
         mapped = LP_VOTE_STATUS_MAP.get(vote.vote or "")
         if mapped == Review.STATUS_NEEDS_FIXING:
             has_needs_fixing = True

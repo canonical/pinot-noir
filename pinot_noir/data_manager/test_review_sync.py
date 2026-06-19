@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -27,7 +28,7 @@ def _mr(web_url, status, **kwargs):
 class RefreshReviewsTests(TestCase):
     @patch("pinot_noir.data_manager.tasks._get_launchpad_service_for_user")
     def test_skips_rejected_and_superseded_merge_proposals(self, get_service_mock):
-        submitter = LPUser.objects.create(username="graysonwolf")
+        submitter = LPUser.objects.create(username="graysonwolf", is_team_member=True)
         LPUser.objects.create(username="ubuntu-server", is_review_marker=True)
 
         service = MagicMock()
@@ -47,9 +48,11 @@ class RefreshReviewsTests(TestCase):
         self.assertEqual(review.status, Review.STATUS_NEEDS_REVIEW)
 
 
-def _vote(username, vote):
+def _vote(username, vote, voted_at=None):
     """Build a minimal merge-request vote namespace."""
-    return SimpleNamespace(voter=SimpleNamespace(username=username), vote=vote)
+    return SimpleNamespace(
+        voter=SimpleNamespace(username=username), vote=vote, voted_at=voted_at
+    )
 
 
 class ReviewStatusFromMergeRequestTests(TestCase):
@@ -124,4 +127,18 @@ class ReviewStatusFromMergeRequestTests(TestCase):
         self.assertEqual(
             review_status_from_merge_request(mr, set()),
             Review.STATUS_NEEDS_REVIEW,
+        )
+
+    def test_only_latest_vote_per_voter_considered(self):
+        mr = _mr(
+            "https://lp.test/merge/1",
+            "Needs review",
+            votes=[
+                _vote("alice", "Needs Fixing", voted_at=datetime(2026, 1, 1)),
+                _vote("alice", "Approve", voted_at=datetime(2026, 1, 2)),
+            ],
+        )
+        self.assertEqual(
+            review_status_from_merge_request(mr, set()),
+            Review.STATUS_COMMUNITY_APPROVED,
         )
