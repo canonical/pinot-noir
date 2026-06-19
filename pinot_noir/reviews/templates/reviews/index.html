@@ -124,11 +124,9 @@
                                 {% endif %}
                             </td>
                             <td class="u-align--center">
-                                {% if review.status == "Approved" %}
+                                {% if review.status == "Approved" or review.status == "Team Approved" or review.status == "Community Approved" %}
                                     <span class="p-chip--positive is-inline">{{ review.status }}</span>
                                 {% elif review.status == "Needs Review" %}
-                                    <span class="p-chip--caution is-inline">{{ review.status }}</span>
-                                {% elif review.status == "Under Review" %}
                                     <span class="p-chip--information is-inline">{{ review.status }}</span>
                                 {% elif review.status == "Needs Fixing" or review.status == "Needs Information" %}
                                     <span class="p-chip--negative is-inline">{{ review.status }}</span>
