@@ -20,7 +20,6 @@ LP_STATUS_MAP: dict[str, str] = {
     "Needs review": Review.STATUS_NEEDS_REVIEW,
     "Approved": Review.STATUS_APPROVED,
     "Code failed to merge": Review.STATUS_NEEDS_FIXING,
-    "Queued": Review.STATUS_UNDER_REVIEW,
     "Merged": Review.STATUS_APPROVED,
 }
 
