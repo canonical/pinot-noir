@@ -296,7 +296,9 @@ def refresh_reviews(username: str) -> None:
             reviewer_user = None
             if mr.assignees and any(a.username in marker_usernames for a in mr.assignees):
                 for assignee in mr.assignees:
-                    matched_lp_user = LPUser.objects.filter(username=assignee.username).first()
+                    matched_lp_user = LPUser.objects.filter(
+                        username=assignee.username, is_review_marker=False
+                    ).first()
                     if matched_lp_user:
                         reviewer_username = assignee.username
                         reviewer_user = matched_lp_user
@@ -352,7 +354,6 @@ def refresh_single_merge(username: str, bug_id: int) -> None:
     if full_bug.bug_tasks and full_bug.bug_tasks[0].status == "Invalid":
         Merge.objects.filter(lp_bug=bug_id).delete()
         return
-
 
     merge_type = existing.merge_type if existing else Merge.TYPE_MERGE
     milestone = existing.milestone if existing else ""
