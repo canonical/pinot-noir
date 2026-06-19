@@ -435,7 +435,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "python-debian", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "ubq", specifier = ">=0.5.2" },
+    { name = "ubq", specifier = ">=0.5.3" },
     { name = "whitenoise", specifier = ">=6.12.0" },
 ]
 
@@ -687,16 +687,16 @@ wheels = [
 
 [[package]]
 name = "ubq"
-version = "0.5.2"
+version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "keyring" },
     { name = "launchpadlib" },
     { name = "lazr-restfulclient" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/50/203ad0be498c2b238a0ea1f7646ca4689e4815d3129f7b4743a822fa43f2/ubq-0.5.2.tar.gz", hash = "sha256:eedafd7d0d766ee9b288be23adc27f22c41fb646eada9f9977d5133a8a76ba8b", size = 55142, upload-time = "2026-06-18T21:57:55.383Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/fc/ee9e2a5a89f6661af6a6d044568d4e72cbbdff50559f1685044842e9d780/ubq-0.5.3.tar.gz", hash = "sha256:f26563c6b2ce0b248c7f9649055755c357792e07a6fee2861d8b6c08b1d80ad0", size = 55380, upload-time = "2026-06-19T18:59:45.657Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/e7/a76da0d8692bf788f6f57c646c9e8f85f4f2e3ff9421b021b508c076d5d4/ubq-0.5.2-py3-none-any.whl", hash = "sha256:941f3392b31caeb4c96fd723993755174257483b78f6f71b4824a0fe8833f08c", size = 43971, upload-time = "2026-06-18T21:57:54.048Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/df/91ee63b241183341f5b1dcad84c9cd428c937da9e11b6dfd5b9e9ea1d553/ubq-0.5.3-py3-none-any.whl", hash = "sha256:7eddb42efdb76c1c9a94896ccfb6e63cf57bfd1aa920e2cf02a1fa2602039fea", size = 44090, upload-time = "2026-06-19T18:59:44.359Z" },
 ]
 
 [[package]]
