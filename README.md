@@ -9,6 +9,7 @@ Create a `.env` file in the project root (never commit this file):
 ```bash
 DJANGO_SETTINGS_MODULE=pinot_noir.settings.production
 SECRET_KEY=your-secret-key
+FIELD_ENCRYPTION_KEY=your-encryption-key
 ALLOWED_HOSTS=pinotnoirdomain.com
 CSRF_TRUSTED_ORIGINS=https://pinotnoirdomain.com
 DB_NAME=pinot_noir
@@ -20,6 +21,13 @@ DB_PASSWORD=your-db-password
 ```
 
 Generate a secret key with:
+
+```bash
+uv run python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+```
+
+Generate a field encryption key the same way (use a value distinct from
+`SECRET_KEY`):
 
 ```bash
 uv run python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'

@@ -9,6 +9,11 @@ from .base import *
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-t+yf%^(vi5zm+fd!#o=a%bh7c6=8fub+z@!ji*2=hdzno^=7op"
 
+# SECURITY WARNING: keep the field encryption key used in production secret!
+# Used to encrypt sensitive model fields (e.g. stored API tokens). Kept
+# separate from SECRET_KEY so the latter can be rotated independently.
+FIELD_ENCRYPTION_KEY = "django-insecure-encryption-key-pmh2!8w=q3xv0&zr+f^t1ng"
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

@@ -4,6 +4,7 @@ Production settings for pinot_noir project.
 Reads all sensitive configuration from environment variables.
 Required environment variables:
   SECRET_KEY     - Django secret key
+  FIELD_ENCRYPTION_KEY - Key used to encrypt sensitive model fields
   DB_NAME        - PostgreSQL database name
   DB_USER        - PostgreSQL user
   DB_PASSWORD    - PostgreSQL password
@@ -20,6 +21,10 @@ import os
 from .base import *
 
 SECRET_KEY = os.environ["SECRET_KEY"]
+
+# Dedicated key for encrypting sensitive model fields, independent of
+# SECRET_KEY so the latter can be rotated without losing stored secrets.
+FIELD_ENCRYPTION_KEY = os.environ["FIELD_ENCRYPTION_KEY"]
 
 DEBUG = False
 

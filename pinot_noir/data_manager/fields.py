@@ -7,8 +7,8 @@ from django.db import models
 
 
 def _build_fernet() -> Fernet:
-    """Build a deterministic fernet key from Django's SECRET_KEY."""
-    key_material = hashlib.sha256(settings.SECRET_KEY.encode("utf-8")).digest()
+    """Build a deterministic Fernet from settings.FIELD_ENCRYPTION_KEY."""
+    key_material = hashlib.sha256(settings.FIELD_ENCRYPTION_KEY.encode("utf-8")).digest()
     return Fernet(base64.urlsafe_b64encode(key_material))
 
 
