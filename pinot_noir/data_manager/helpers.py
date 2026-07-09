@@ -1,5 +1,6 @@
 """Helper functions and constants for data_manager tasks."""
 
+from debian.changelog import ChangeBlock, Changelog, ChangelogParseError
 from debian.debian_support import Version
 from ubq import QueryService
 from ubq.errors import RequestTimeoutError
@@ -10,6 +11,7 @@ from ubq.models import (
     MergeRequestRecord,
     MergeRequestVoteRecord,
     UserRecord,
+    VersionRecord,
 )
 
 from pinot_noir.data_manager.models import (
@@ -52,6 +54,75 @@ LP_BUG_STATUS_MAP: dict[str, str] = {
 }
 
 
+def _changelog_text(version: VersionRecord | None) -> str:
+    """Return the changelog text from a version record, or an empty string."""
+    if version is None:
+        return ""
+    changelog = version.changelog
+    return changelog if isinstance(changelog, str) else ""
+
+
+def _blocks_before_version(blocks: list[ChangeBlock], version: str) -> list[ChangeBlock]:
+    """Return the changelog blocks that appear before (are newer than) *version*."""
+    collected: list[ChangeBlock] = []
+    for block in blocks:
+        if block.version is not None and str(block.version) == version:
+            break
+        collected.append(block)
+    return collected
+
+
+def changelog_diff_since_common(ubuntu_changelog: str, debian_changelog: str) -> str:
+    """Return changelog entries newer than the version common to both changelogs.
+
+    Parses the raw Ubuntu and Debian changelog text, finds the most recent
+    version that appears in both, and returns the Ubuntu and Debian changelog
+    blocks that are newer than that common version, grouped under headings.
+
+    Returns an empty string when either changelog is missing or no common
+    version can be found.
+    """
+    if not ubuntu_changelog or not debian_changelog:
+        return ""
+
+    try:
+        ubuntu_blocks = list(Changelog(ubuntu_changelog))
+        debian_blocks = list(Changelog(debian_changelog))
+    except ChangelogParseError:
+        return ""
+
+    debian_versions = {str(block.version) for block in debian_blocks if block.version is not None}
+
+    common_version = next(
+        (
+            str(block.version)
+            for block in ubuntu_blocks
+            if block.version is not None and str(block.version) in debian_versions
+        ),
+        None,
+    )
+    if common_version is None:
+        return ""
+
+    ubuntu_new = _blocks_before_version(ubuntu_blocks, common_version)
+    debian_new = _blocks_before_version(debian_blocks, common_version)
+
+    sections: list[str] = []
+
+    if debian_new:
+        sections.append(
+            "### New Debian Changes ###\n\n"
+            + "".join(str(block) for block in debian_new)
+        )
+
+    if ubuntu_new:
+        sections.append(
+            "### Old Ubuntu Delta ###\n\n"
+            + "".join(str(block) for block in ubuntu_new)
+        )
+    return "\n".join(sections)
+
+
 class MergePackageVersionInfo:
     """Current version strings associated with a package in preparation for merge."""
 
@@ -64,6 +135,11 @@ class MergePackageVersionInfo:
         self._release_version: str = ""
         self._debian_unstable_version: str = ""
         self._debian_experimental_version: str = ""
+
+        self._proposed_changelog: str = ""
+        self._release_changelog: str = ""
+        self._debian_unstable_changelog: str = ""
+        self._debian_experimental_changelog: str = ""
 
         self._use_proposed: bool = False
         self._use_experimental: bool = False
@@ -85,12 +161,26 @@ class MergePackageVersionInfo:
 
         full_str += f"Debian Unstable: {self._debian_unstable_version}\n"
 
+        ubuntu_changelog = (
+            self._proposed_changelog if self._use_proposed else self._release_changelog
+        )
+        debian_changelog = (
+            self._debian_experimental_changelog
+            if self._use_experimental
+            else self._debian_unstable_changelog
+        )
+        changelog_diff = changelog_diff_since_common(ubuntu_changelog, debian_changelog)
+        if changelog_diff:
+            full_str += f"\n{changelog_diff}\n"
+
         return full_str
 
-    def _get_version_string(self, archive: str, series: str, pocket: str = "Release") -> str:
-        """Get package version string for archive, series, and pocket."""
+    def _get_version(
+        self, archive: str, series: str, pocket: str = "Release"
+    ) -> VersionRecord | None:
+        """Get the package version record for archive, series, and pocket."""
         try:
-            package_version = self._queryService.get_version(
+            return self._queryService.get_version(
                 self._package_name,
                 archive=archive,
                 series=series,
@@ -98,10 +188,7 @@ class MergePackageVersionInfo:
                 provider_name="launchpad",
             )
         except RequestTimeoutError:
-            return ""
-        if package_version:
-            return package_version.version_string
-        return ""
+            return None
 
     def _determine_versions_to_use(self) -> None:
         """Check if merge is ready and what versions should be used."""
@@ -138,15 +225,21 @@ class MergePackageVersionInfo:
             self._ready_for_merge = True
 
     def refresh_versions(self) -> None:
-        """Refresh all version strings from Launchpad."""
-        self._proposed_version = self._get_version_string(
-            "ubuntu", self._devel_series, pocket="Proposed"
-        )
-        self._release_version = self._get_version_string(
-            "ubuntu", self._devel_series, pocket="Release"
-        )
-        self._debian_unstable_version = self._get_version_string("debian", "sid")
-        self._debian_experimental_version = self._get_version_string("debian", "experimental")
+        """Refresh all version strings and changelogs from Launchpad."""
+        proposed = self._get_version("ubuntu", self._devel_series, pocket="Proposed")
+        release = self._get_version("ubuntu", self._devel_series, pocket="Release")
+        unstable = self._get_version("debian", "sid")
+        experimental = self._get_version("debian", "experimental")
+
+        self._proposed_version = proposed.version_string if proposed else ""
+        self._release_version = release.version_string if release else ""
+        self._debian_unstable_version = unstable.version_string if unstable else ""
+        self._debian_experimental_version = experimental.version_string if experimental else ""
+
+        self._proposed_changelog = _changelog_text(proposed)
+        self._release_changelog = _changelog_text(release)
+        self._debian_unstable_changelog = _changelog_text(unstable)
+        self._debian_experimental_changelog = _changelog_text(experimental)
 
         self._determine_versions_to_use()
 

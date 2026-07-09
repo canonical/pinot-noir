@@ -2,7 +2,11 @@ from unittest.mock import MagicMock
 
 from django.test import SimpleTestCase
 
-from pinot_noir.data_manager.helpers import MergePackageVersionInfo, prepare_merge_bug
+from pinot_noir.data_manager.helpers import (
+    MergePackageVersionInfo,
+    changelog_diff_since_common,
+    prepare_merge_bug,
+)
 
 _INTRO_LINE = "A new release of testpkg is available for merging from Debian.\n\n"
 
@@ -32,8 +36,8 @@ def _make_info(
     }
     service = MagicMock()
     service.get_version.side_effect = (
-        lambda pkg, archive=None, series=None, pocket=None, provider_name=None: (
-            versions.get((archive, series, pocket))
+        lambda pkg, archive=None, series=None, pocket=None, provider_name=None: versions.get(
+            (archive, series, pocket)
         )
     )
     info = MergePackageVersionInfo("testpkg", devel_series, service)
@@ -194,8 +198,8 @@ def _make_merge_service(
     }
     service = MagicMock()
     service.get_version.side_effect = (
-        lambda pkg, archive=None, series=None, pocket=None, provider_name=None: (
-            versions.get((archive, series, pocket))
+        lambda pkg, archive=None, series=None, pocket=None, provider_name=None: versions.get(
+            (archive, series, pocket)
         )
     )
     return service
@@ -286,3 +290,65 @@ class PrepareMergeBugTests(SimpleTestCase):
         result = _ready_result(offset=10, version="26.04")
         self.assertIsNotNone(result)
         self.assertEqual(result.milestone, "ubuntu-25.11")
+
+
+# ---------------------------------------------------------------------------
+# changelog_diff_since_common
+# ---------------------------------------------------------------------------
+
+
+def _block(version: str, distribution: str, change: str) -> str:
+    """Return a single formatted changelog block for the ``testpkg`` package."""
+    return (
+        f"testpkg ({version}) {distribution}; urgency=medium\n\n"
+        f"  * {change}\n\n"
+        f" -- Dev <dev@example.com>  Mon, 01 Jan 2026 00:00:00 +0000\n"
+    )
+
+
+class ChangelogDiffSinceCommonTests(SimpleTestCase):
+    def test_returns_entries_after_common_version(self):
+        ubuntu = _block("1.2.3-0ubuntu1", "noble", "Ubuntu delta.") + _block(
+            "1.2.2-1", "unstable", "Synced from Debian."
+        )
+        debian = (
+            _block("1.2.5-1", "unstable", "Debian change B.")
+            + _block("1.2.4-1", "unstable", "Debian change A.")
+            + _block("1.2.2-1", "unstable", "Synced from Debian.")
+        )
+
+        result = changelog_diff_since_common(ubuntu, debian)
+
+        self.assertIn("### Old Ubuntu Delta ###", result)
+        self.assertIn("Ubuntu delta.", result)
+        self.assertIn("### New Debian Changes ###", result)
+        self.assertIn("Debian change A.", result)
+        self.assertIn("Debian change B.", result)
+        # The common version and older entries must not be included.
+        self.assertNotIn("Synced from Debian.", result)
+
+    def test_empty_when_either_changelog_missing(self):
+        debian = _block("1.2.4-1", "unstable", "Debian change.")
+        self.assertEqual(changelog_diff_since_common("", debian), "")
+        self.assertEqual(changelog_diff_since_common(debian, ""), "")
+
+    def test_empty_when_no_common_version(self):
+        ubuntu = _block("2.0.0-0ubuntu1", "noble", "Ubuntu only.")
+        debian = _block("1.0.0-1", "unstable", "Debian only.")
+        self.assertEqual(changelog_diff_since_common(ubuntu, debian), "")
+
+    def test_only_ubuntu_section_when_debian_has_no_newer(self):
+        ubuntu = _block("1.2.3-0ubuntu1", "noble", "Ubuntu delta.") + _block(
+            "1.2.2-1", "unstable", "Synced from Debian."
+        )
+        debian = _block("1.2.2-1", "unstable", "Synced from Debian.")
+
+        result = changelog_diff_since_common(ubuntu, debian)
+
+        self.assertIn("### Old Ubuntu Delta ###", result)
+        self.assertNotIn("### New Debian Changes ###", result)
+
+    def test_malformed_changelog_returns_empty(self):
+        self.assertEqual(
+            changelog_diff_since_common("not a changelog", "also not a changelog"), ""
+        )
