@@ -247,6 +247,12 @@ class MergePackageVersionInfo:
         """Return True if the package is ready for merge."""
         return self._ready_for_merge
 
+    def get_debian_merge_version(self) -> str:
+        """Return the Debian version being merged (experimental or unstable)."""
+        if self._use_experimental:
+            return self._debian_experimental_version
+        return self._debian_unstable_version
+
     def get_package_name(self) -> str:
         """Return the package name."""
         return self._package_name
@@ -472,9 +478,13 @@ def prepare_merge_bug(
     if not new_merge_version_info.ready_for_merge():
         return None
 
+    debian_version = new_merge_version_info.get_debian_merge_version()
     bug_submission = BugSubmissionRecord(
         provider_name="launchpad",
-        title=f"Merge {package_settings.package} from Debian for {ubuntu_release.adjective} cycle",
+        title=(
+            f"Merge {package_settings.package} {debian_version} "
+            f"from Debian for {ubuntu_release.adjective} cycle"
+        ),
         package_names=[package_settings.package],
         description=str(new_merge_version_info),
         tags=filter_settings.tags,

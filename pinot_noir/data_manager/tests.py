@@ -238,7 +238,7 @@ class PrepareMergeBugTests(SimpleTestCase):
     def test_title_contains_package_and_adjective(self):
         result = _ready_result()
         self.assertIsNotNone(result)
-        self.assertEqual(result.title, "Merge testpkg from Debian for resolute cycle")
+        self.assertEqual(result.title, "Merge testpkg 1.2.4-1 from Debian for resolute cycle")
 
     def test_description_starts_with_intro_line(self):
         result = _ready_result()
