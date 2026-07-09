@@ -1,11 +1,7 @@
-import json
-
 from django.contrib import admin, messages
 from django.contrib.sites.models import Site
-from django.http import HttpResponse
 
 from pinot_noir.data_manager.tasks import (
-    bug_submission_to_json_dict,
     prepare_merge_bug_submissions,
     submit_prepared_merge_bug_submissions,
 )
@@ -63,30 +59,7 @@ class UserTokensAdmin(admin.ModelAdmin):
 class MergeBugPackageInfoAdmin(admin.ModelAdmin):
     list_display = ("package", "milestone_offset", "bug_filed_this_cycle")
     search_fields = ("package",)
-    actions = ["prepare_merge_bugs_download_json", "prepare_and_submit_merge_bugs"]
-
-    @admin.action(description="Prepare merge bug submissions and download as JSON")
-    def prepare_merge_bugs_download_json(self, request, queryset):
-        try:
-            submissions = prepare_merge_bug_submissions(user=request.user)
-        except Exception as exc:
-            self.message_user(request, f"Failed to prepare submissions: {exc}", messages.ERROR)
-            return
-
-        if not submissions:
-            self.message_user(request, "No new merge bug submissions needed.", messages.WARNING)
-            return
-
-        payload = [
-            {"package": pkg, "submission": bug_submission_to_json_dict(sub)}
-            for pkg, sub in submissions
-        ]
-        response = HttpResponse(
-            json.dumps(payload, indent=2, sort_keys=True),
-            content_type="application/json",
-        )
-        response["Content-Disposition"] = 'attachment; filename="merge_bug_submissions.json"'
-        return response
+    actions = ["prepare_and_submit_merge_bugs"]
 
     @admin.action(description="Prepare and submit merge bugs to Launchpad")
     def prepare_and_submit_merge_bugs(self, request, queryset):

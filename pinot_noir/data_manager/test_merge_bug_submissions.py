@@ -3,42 +3,14 @@ from unittest.mock import MagicMock, patch
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.test import TestCase
-from ubq.models import BugSubmissionRecord, UserRecord
+from ubq.models import BugSubmissionRecord
 
 from pinot_noir.data_manager.models import MergeBugFilterSettings, MergeBugPackageInfo, UserTokens
 from pinot_noir.data_manager.tasks import (
-    bug_submission_from_json_dict,
-    bug_submission_to_json_dict,
     prepare_merge_bug_submissions,
     submit_prepared_merge_bug_submissions,
 )
 from pinot_noir.launchpad.models import UbuntuRelease
-
-
-class MergeBugSubmissionConversionTests(TestCase):
-    def test_bug_submission_json_round_trip(self):
-        submission = BugSubmissionRecord(
-            provider_name="launchpad",
-            title="Merge pkg from Debian for resolute cycle",
-            package_names=["pkg"],
-            description="desc",
-            tags=["server-todo"],
-            subscribers=[UserRecord(username="ubuntu-server")],
-            assignee=UserRecord(username="owner"),
-            private=False,
-            milestone="ubuntu-26.04",
-        )
-
-        serialized = bug_submission_to_json_dict(submission)
-        round_tripped = bug_submission_from_json_dict(serialized)
-
-        self.assertEqual(round_tripped.provider_name, submission.provider_name)
-        self.assertEqual(round_tripped.title, submission.title)
-        self.assertEqual(round_tripped.package_names, submission.package_names)
-        self.assertEqual(round_tripped.tags, submission.tags)
-        self.assertEqual(round_tripped.milestone, submission.milestone)
-        self.assertEqual(round_tripped.assignee.username, "owner")
-        self.assertEqual([sub.username for sub in round_tripped.subscribers], ["ubuntu-server"])
 
 
 class MergeBugSubmissionPreparationTests(TestCase):

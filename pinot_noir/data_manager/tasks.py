@@ -2,7 +2,6 @@
 
 import logging
 from datetime import timedelta
-from typing import Any
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -11,7 +10,7 @@ from django_tasks import task
 from django_tasks_db.models import DBTaskResult
 from ubq import QueryService
 from ubq.errors import RequestTimeoutError
-from ubq.models import BugSubmissionRecord, ProviderCredentials, UserRecord
+from ubq.models import BugSubmissionRecord, ProviderCredentials
 
 from pinot_noir.data_manager.helpers import (
     LP_REVIEW_SKIP_STATUSES,
@@ -62,44 +61,6 @@ def _get_launchpad_service_for_user(username: str) -> QueryService:
         credentials=ProviderCredentials(token=tokens.lp_token),
     )
     return service
-
-
-def bug_submission_to_json_dict(submission: BugSubmissionRecord) -> dict[str, Any]:
-    """Convert a BugSubmissionRecord into a JSON-safe dictionary."""
-    return {
-        "provider_name": submission.provider_name,
-        "title": submission.title,
-        "package_names": submission.package_names,
-        "description": submission.description,
-        "importance": submission.importance,
-        "status": submission.status,
-        "tags": submission.tags,
-        "subscribers": [sub.username for sub in submission.subscribers],
-        "assignee": submission.assignee.username if submission.assignee else None,
-        "private": submission.private,
-        "milestone": submission.milestone,
-    }
-
-
-def bug_submission_from_json_dict(data: dict[str, Any]) -> BugSubmissionRecord:
-    """Build a BugSubmissionRecord from JSON-loaded dictionary data."""
-    subscribers = [UserRecord(username=username) for username in data.get("subscribers", [])]
-    assignee_name = data.get("assignee")
-    assignee = UserRecord(username=assignee_name) if assignee_name else None
-
-    return BugSubmissionRecord(
-        provider_name=data["provider_name"],
-        title=data["title"],
-        package_names=data.get("package_names", []),
-        description=data.get("description"),
-        importance=data.get("importance"),
-        status=data.get("status"),
-        tags=data.get("tags", []),
-        subscribers=subscribers,
-        assignee=assignee,
-        private=bool(data.get("private", False)),
-        milestone=data.get("milestone"),
-    )
 
 
 def prepare_merge_bug_submissions(
