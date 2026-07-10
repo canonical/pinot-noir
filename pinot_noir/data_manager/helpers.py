@@ -274,7 +274,8 @@ def release_from_branch(branch: str | None) -> str:
     """Extract the Ubuntu release series from a git branch path.
 
     Branch paths are typically ``refs/heads/ubuntu/<SERIES>`` or
-    ``refs/heads/ubuntu/<SERIES>-proposed``.
+    ``refs/heads/ubuntu/<SERIES>-proposed``. If a Debian branch
+    is used, assume this is a merge and use devel.
     """
     if not branch:
         return ""
@@ -282,6 +283,8 @@ def release_from_branch(branch: str | None) -> str:
     for i, part in enumerate(parts):
         if part == "ubuntu" and i + 1 < len(parts):
             return parts[i + 1].split("-")[0]
+        if part == "debian":
+            return "devel"
     return ""
 
 
