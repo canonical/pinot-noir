@@ -1,4 +1,4 @@
-"""Management command to enqueue the initial review-sync task."""
+"""Management command to enqueue the reviews page sync task."""
 
 from django.core.management.base import BaseCommand
 
@@ -6,7 +6,7 @@ from pinot_noir.data_manager.tasks import refresh_reviews
 
 
 class Command(BaseCommand):
-    help = "Enqueue the first run of the periodic review sync task."
+    help = "Enqueue the reviews page sync task."
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
