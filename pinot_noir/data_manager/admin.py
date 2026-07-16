@@ -12,6 +12,7 @@ from .models import (
     MergeBugFilterSettings,
     MergeBugPackageInfo,
     UserTokens,
+    WeeklyTask,
 )
 
 
@@ -142,3 +143,14 @@ class BackportBugFilterSettingsAdmin(admin.ModelAdmin):
         obj.site = Site.objects.get_current()
         obj.settings_type = MergeBugFilterSettings.TYPE_BACKPORT
         super().save_model(request, obj, form, change)
+
+
+@admin.register(WeeklyTask)
+class WeeklyTaskAdmin(admin.ModelAdmin):
+    list_display = ("task", "user", "active_days_display", "time_of_day", "enabled", "next_run")
+    list_filter = ("enabled", "task")
+    readonly_fields = ("next_run",)
+
+    @admin.display(description="Days")
+    def active_days_display(self, obj):
+        return obj.active_days_display()

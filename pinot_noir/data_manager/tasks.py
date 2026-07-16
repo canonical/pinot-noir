@@ -29,6 +29,7 @@ from pinot_noir.data_manager.models import (
     MergeBugFilterSettings,
     MergeBugPackageInfo,
     UserTokens,
+    WeeklyTask,
 )
 from pinot_noir.launchpad.models import LPUser, UbuntuRelease
 from pinot_noir.merges_schedule.models import Merge
@@ -38,6 +39,7 @@ from pinot_noir.reviews.models import Review
 SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
 PRUNE_AGE_DAYS = 7
 STUCK_RUNNING_HOURS = 24
+WEEKLY_SCHEDULER_INTERVAL_MINUTES = 15
 
 
 def _get_devel_or_requested_release(release_adjective: str | None = None) -> UbuntuRelease:
@@ -410,12 +412,10 @@ def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
 
 
 @task()
-def prune_task_results() -> None:
+def prune_task_results(username: str | None = None) -> None:
     """Delete old completed/failed task results and reset stuck running tasks.
 
-    Removes ``SUCCESSFUL`` and ``FAILED`` ``DBTaskResult`` rows older than
-    ``PRUNE_AGE_DAYS`` days.  Tasks stuck in ``RUNNING`` status for longer than
-    ``STUCK_RUNNING_HOURS`` hours are reset to ``FAILED``.
+    Username field is currently ignored.
     """
     # Prevent duplicate scheduled prune tasks
     DBTaskResult.objects.filter(
@@ -443,4 +443,50 @@ def prune_task_results() -> None:
             stuck_count,
         )
 
+
+def get_schedulable_tasks() -> dict:
+    """Return a mapping of WeeklyTask task keys to their task callables."""
+    schedulable = (
+        refresh_reviews,
+        prune_task_results,
+        refresh_merge_schedule,
+        submit_merge_bugs,
+        submit_backport_bugs,
+    )
+    return {t.func.__name__: t for t in schedulable}
+
+@task()
+def schedule_weekly_tasks() -> None:
+    """Enqueue each due WeeklyTask entry and re-schedule self."""
+    DBTaskResult.objects.filter(
+        task_path=schedule_weekly_tasks.module_path,
+        status="READY",
+    ).delete()
+
+    now = timezone.now()
+    schedulable = get_schedulable_tasks()
+
+    for weekly_task in WeeklyTask.objects.filter(enabled=True):
+        # Still enqueued for a future run; leave it alone.
+        if weekly_task.next_run is not None and weekly_task.next_run > now:
+            continue
+
+        underlying_task = schedulable.get(weekly_task.task)
+        if underlying_task is None:
+            continue
+
+        run_at = weekly_task.next_occurrence(now)
+        if run_at is None:
+            continue
+
+        kwargs = {}
+        if weekly_task.user_id is not None:
+            kwargs["username"] = weekly_task.user.username
+
+        underlying_task.using(run_after=run_at).enqueue(**kwargs)
+        weekly_task.next_run = run_at
+        weekly_task.save(update_fields=["next_run"])
+
+    schedule_weekly_tasks.using(
+        run_after=now + timedelta(minutes=WEEKLY_SCHEDULER_INTERVAL_MINUTES),
     ).enqueue()
