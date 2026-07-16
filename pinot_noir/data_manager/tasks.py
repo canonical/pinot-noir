@@ -36,7 +36,6 @@ from pinot_noir.pages.models import PageMetadata
 from pinot_noir.reviews.models import Review
 
 SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
-PRUNE_INTERVAL_HOURS = 24
 PRUNE_AGE_DAYS = 7
 STUCK_RUNNING_HOURS = 24
 
@@ -423,8 +422,6 @@ def prune_task_results() -> None:
     Removes ``SUCCESSFUL`` and ``FAILED`` ``DBTaskResult`` rows older than
     ``PRUNE_AGE_DAYS`` days.  Tasks stuck in ``RUNNING`` status for longer than
     ``STUCK_RUNNING_HOURS`` hours are reset to ``FAILED``.
-
-    Re-enqueues itself to run again after ``PRUNE_INTERVAL_HOURS`` hours.
     """
     # Prevent duplicate scheduled prune tasks
     DBTaskResult.objects.filter(
@@ -452,6 +449,4 @@ def prune_task_results() -> None:
             stuck_count,
         )
 
-    prune_task_results.using(
-        run_after=timezone.now() + timedelta(hours=PRUNE_INTERVAL_HOURS),
     ).enqueue()
