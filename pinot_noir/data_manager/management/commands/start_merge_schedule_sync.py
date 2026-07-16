@@ -15,7 +15,12 @@ class Command(BaseCommand):
         parser.add_argument(
             "release_adjective",
             type=str,
-            help="Adjective of the Ubuntu release to sync (e.g. 'resolute').",
+            nargs="?",
+            default=None,
+            help=(
+                "Adjective of the Ubuntu release to sync (e.g. 'resolute'). "
+                "Defaults to the current development release."
+            ),
         )
         parser.add_argument(
             "--username",
@@ -26,6 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         release_adjective = options["release_adjective"]
         refresh_merge_schedule.enqueue(options["username"], release_adjective)
+        target = release_adjective or "the development release"
         self.stdout.write(
-            self.style.SUCCESS(f"Merge schedule sync enqueued for release '{release_adjective}'.")
+            self.style.SUCCESS(f"Merge schedule sync enqueued for {target}.")
         )
