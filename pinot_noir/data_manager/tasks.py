@@ -164,10 +164,10 @@ def submit_backport_bugs(username: str, release_adjective: str | None = None) ->
 
 
 @task()
-def refresh_merge_schedule(username: str, release_adjective: str) -> None:
+def refresh_merge_schedule(username: str, release_adjective: str | None = None) -> None:
     """Wipe the merge schedule, re-import bugs, then enqueue per-bug refreshes.
 
-    Looks up the Ubuntu release by its adjective (e.g. ``'resolute'``), computes
+    Looks up the Ubuntu release by its adjective or uses devel by default, computes
     the six monthly milestones for that release cycle, then queries Launchpad for
     all bugs whose tags match ``MergeBugFilterSettings`` or
     ``BackportBugFilterSettings`` and whose milestone falls within that range.
@@ -175,10 +175,7 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
     the schedule is synced, staggered per-bug refresh tasks are enqueued for
     every imported bug.
     """
-    try:
-        release = UbuntuRelease.objects.get(adjective=release_adjective)
-    except UbuntuRelease.DoesNotExist:
-        return
+    release = _get_devel_or_requested_release(release_adjective)
 
     valid_milestones = milestones_for_release(release.version)
     merge_settings = MergeBugFilterSettings.objects.filter(
