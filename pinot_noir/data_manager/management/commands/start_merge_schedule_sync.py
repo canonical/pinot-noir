@@ -6,7 +6,10 @@ from pinot_noir.data_manager.tasks import refresh_merge_schedule
 
 
 class Command(BaseCommand):
-    help = "Enqueue a merge schedule refresh for the given Ubuntu release."
+    help = (
+        "Enqueue a merge schedule refresh for the given Ubuntu release. "
+        "Once synced, staggered per-bug refreshes are enqueued automatically."
+    )
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(

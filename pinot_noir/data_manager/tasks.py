@@ -164,13 +164,15 @@ def submit_backport_bugs(username: str, release_adjective: str | None = None) ->
 
 @task()
 def refresh_merge_schedule(username: str, release_adjective: str) -> None:
-    """Wipe the merge schedule then re-import bugs from Launchpad for a given Ubuntu release.
+    """Wipe the merge schedule, re-import bugs, then enqueue per-bug refreshes.
 
     Looks up the Ubuntu release by its adjective (e.g. ``'resolute'``), computes
     the six monthly milestones for that release cycle, then queries Launchpad for
     all bugs whose tags match ``MergeBugFilterSettings`` or
     ``BackportBugFilterSettings`` and whose milestone falls within that range.
-    The ``Merge`` table is atomically replaced with the imported results.
+    The ``Merge`` table is atomically replaced with the imported results.  Once
+    the schedule is synced, staggered per-bug refresh tasks are enqueued for
+    every imported bug.
     """
     try:
         release = UbuntuRelease.objects.get(adjective=release_adjective)
@@ -223,6 +225,8 @@ def refresh_merge_schedule(username: str, release_adjective: str) -> None:
         Merge.objects.exclude(lp_bug__in=imported_bug_ids).delete()
 
     PageMetadata.touch("merges-schedule")
+
+    enqueue_all_merge_refreshes(username)
 
 
 @task()
@@ -346,12 +350,8 @@ def refresh_single_merge(username: str, bug_id: int) -> None:
 
 
 @task()
-def queue_single_merge_refresh(
-    username: str,
-    bug_id: int,
-    interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
-) -> None:
-    """Enqueue a refresh for *bug_id* and re-schedule this task after *interval_hours* hours.
+def queue_single_merge_refresh(username: str, bug_id: int) -> None:
+    """Enqueue a refresh for *bug_id* and re-schedule it after the refresh interval.
 
     If the Merge no longer exists (e.g. it was invalidated), the cycle stops.
     """
@@ -359,19 +359,15 @@ def queue_single_merge_refresh(
         return
     refresh_single_merge.enqueue(username, bug_id)
     queue_single_merge_refresh.using(
-        run_after=timezone.now() + timedelta(hours=interval_hours),
-    ).enqueue(username, bug_id, interval_hours)
+        run_after=timezone.now() + timedelta(hours=SINGLE_MERGE_REFRESH_INTERVAL_HOURS),
+    ).enqueue(username, bug_id)
 
 
-@task()
-def enqueue_all_merge_refreshes(
-    username: str,
-    single_merge_refresh_interval_hours: int = SINGLE_MERGE_REFRESH_INTERVAL_HOURS,
-) -> None:
+def enqueue_all_merge_refreshes(username: str) -> None:
     """Enqueue staggered ``queue_single_merge_refresh`` tasks for every bug in the Merge table.
 
-    Initial runs are spread evenly across *single_merge_refresh_interval_hours* so that subsequent
-    periodic refreshes remain staggered rather than firing all at once.
+    Initial runs are spread evenly across ``SINGLE_MERGE_REFRESH_INTERVAL_HOURS`` so that
+    subsequent periodic refreshes remain staggered rather than firing all at once.
     """
     # Clear existing queued single-merge refreshes to avoid duplicates
     DBTaskResult.objects.filter(
@@ -390,10 +386,10 @@ def enqueue_all_merge_refreshes(
         return
 
     for i, bug_id in enumerate(bug_ids):
-        delay_hours = i * single_merge_refresh_interval_hours / count
+        delay_hours = i * SINGLE_MERGE_REFRESH_INTERVAL_HOURS / count
         queue_single_merge_refresh.using(
             run_after=timezone.now() + timedelta(hours=delay_hours),
-        ).enqueue(username, bug_id, single_merge_refresh_interval_hours)
+        ).enqueue(username, bug_id)
 
 
 def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:
