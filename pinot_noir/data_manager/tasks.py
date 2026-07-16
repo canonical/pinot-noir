@@ -35,7 +35,6 @@ from pinot_noir.merges_schedule.models import Merge
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.reviews.models import Review
 
-REFRESH_INTERVAL_HOURS = 6
 SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
 PRUNE_INTERVAL_HOURS = 24
 PRUNE_AGE_DAYS = 7
@@ -233,8 +232,7 @@ def refresh_reviews(username: str) -> None:
 
     Iterates over all stored LPUser records, queries Launchpad for each user's
     open merge proposals via ubq, then atomically replaces the contents of the
-    reviews table.  After completion the task re-enqueues itself to run again
-    after ``REFRESH_INTERVAL_HOURS`` hours.
+    reviews table.
     """
 
     DBTaskResult.objects.filter(
@@ -303,10 +301,6 @@ def refresh_reviews(username: str) -> None:
         Review.objects.exclude(mp_url__in=imported_mp_urls).delete()
 
     PageMetadata.touch("reviews")
-
-    refresh_reviews.using(
-        run_after=timezone.now() + timedelta(hours=REFRESH_INTERVAL_HOURS)
-    ).enqueue(username)
 
 
 @task()
