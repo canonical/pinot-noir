@@ -149,6 +149,22 @@ def submit_prepared_backport_bug_submissions(
 
 
 @task()
+def submit_merge_bugs(username: str, release_adjective: str | None = None) -> None:
+    """Prepare and submit all needed merge bug submissions for a release."""
+    submissions = prepare_merge_bug_submissions(username, release_adjective)
+    if submissions:
+        submit_prepared_merge_bug_submissions(username, submissions)
+
+
+@task()
+def submit_backport_bugs(username: str, release_adjective: str | None = None) -> None:
+    """Prepare and submit all needed backport bug submissions for a release."""
+    submissions = prepare_backport_bug_submissions(username, release_adjective)
+    if submissions:
+        submit_prepared_backport_bug_submissions(username, submissions)
+
+
+@task()
 def refresh_merge_schedule(username: str, release_adjective: str) -> None:
     """Wipe the merge schedule then re-import bugs from Launchpad for a given Ubuntu release.
 
