@@ -40,7 +40,14 @@ PRUNE_AGE_DAYS = 7
 STUCK_RUNNING_HOURS = 24
 
 
-def _get_devel_release() -> UbuntuRelease:
+def _get_devel_or_requested_release(release_adjective: str | None = None) -> UbuntuRelease:
+    """Return the UbuntuRelease for the given adjective, or the current devel release."""
+    if release_adjective:
+        try:
+            return UbuntuRelease.objects.get(adjective=release_adjective)
+        except UbuntuRelease.DoesNotExist:
+            raise ObjectDoesNotExist(f"No Ubuntu release found with adjective '{release_adjective}'.")
+
     release = UbuntuRelease.objects.filter(status=UbuntuRelease.STATUS_DEVEL).first()
     if release is None:
         raise ObjectDoesNotExist("No Ubuntu development release found.")
@@ -66,10 +73,7 @@ def prepare_merge_bug_submissions(
     release_adjective: str | None = None,
 ) -> list[tuple[str, BugSubmissionRecord]]:
     """Prepare merge bug submissions for all packages using a user's LP token."""
-    if release_adjective:
-        ubuntu_release = UbuntuRelease.objects.get(adjective=release_adjective)
-    else:
-        ubuntu_release = _get_devel_release()
+    ubuntu_release = _get_devel_or_requested_release(release_adjective)
 
     filter_settings = MergeBugFilterSettings.objects.filter(
         settings_type=MergeBugFilterSettings.TYPE_MERGE
@@ -110,10 +114,7 @@ def prepare_backport_bug_submissions(
     release_adjective: str | None = None,
 ) -> list[tuple[str, BugSubmissionRecord]]:
     """Prepare backport bug submissions for all packages."""
-    if release_adjective:
-        ubuntu_release = UbuntuRelease.objects.get(adjective=release_adjective)
-    else:
-        ubuntu_release = _get_devel_release()
+    ubuntu_release = _get_devel_or_requested_release(release_adjective)
 
     filter_settings = BackportBugFilterSettings.objects.first()
     if filter_settings is None:
