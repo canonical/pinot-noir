@@ -12,7 +12,8 @@ STATUS_ORDER = {
     Merge.STATUS_NEW: 0,
     Merge.STATUS_STARTED: 1,
     Merge.STATUS_PROJECTED: 2,
-    Merge.STATUS_DONE: 3,
+    Merge.STATUS_UPLOADED: 3,
+    Merge.STATUS_DONE: 4,
 }
 
 

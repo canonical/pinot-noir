@@ -95,7 +95,7 @@
                                 {% endif %}
                             </td>
                             <td class="u-align--center">
-                                {% if merge.status == "done" %}
+                                {% if merge.status == "done" or merge.status == "uploaded" %}
                                     <span class="p-chip--positive is-inline">{{ merge.status }}</span>
                                 {% elif merge.status == "started" %}
                                     <span class="p-chip--information is-inline">{{ merge.status }}</span>

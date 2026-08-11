@@ -15,12 +15,14 @@ class Merge(models.Model):
     STATUS_NEW = "new"
     STATUS_PROJECTED = "projected"
     STATUS_STARTED = "started"
+    STATUS_UPLOADED = "uploaded"
     STATUS_DONE = "done"
 
     STATUS_CHOICES = [
         (STATUS_NEW, "new"),
         (STATUS_PROJECTED, "projected"),
         (STATUS_STARTED, "started"),
+        (STATUS_UPLOADED, "uploaded"),
         (STATUS_DONE, "done"),
     ]
 

@@ -49,7 +49,7 @@ LP_BUG_STATUS_MAP: dict[str, str] = {
     "Confirmed": Merge.STATUS_NEW,
     "Triaged": Merge.STATUS_NEW,
     "In Progress": Merge.STATUS_STARTED,
-    "Fix Committed": Merge.STATUS_STARTED,
+    "Fix Committed": Merge.STATUS_UPLOADED,
     "Fix Released": Merge.STATUS_DONE,
 }
 
