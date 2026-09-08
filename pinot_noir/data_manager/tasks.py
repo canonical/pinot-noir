@@ -241,6 +241,7 @@ def refresh_reviews(username: str) -> None:
     DBTaskResult.objects.filter(
         task_path=refresh_reviews.module_path,
         status="READY",
+        run_after__lte=timezone.now(),
     ).delete()
 
     service = _get_launchpad_service_for_user(username)
@@ -421,6 +422,7 @@ def prune_task_results(username: str | None = None) -> None:
     DBTaskResult.objects.filter(
         task_path=prune_task_results.module_path,
         status="READY",
+        run_after__lte=timezone.now(),
     ).delete()
 
     cutoff = timezone.now() - timedelta(days=PRUNE_AGE_DAYS)
