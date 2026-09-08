@@ -466,29 +466,37 @@ def schedule_weekly_tasks() -> None:
     ).delete()
 
     now = timezone.now()
-    schedulable = get_schedulable_tasks()
+    logger = logging.getLogger(__name__)
+    try:
+        schedulable = get_schedulable_tasks()
 
-    for weekly_task in WeeklyTask.objects.filter(enabled=True):
-        # Still enqueued for a future run; leave it alone.
-        if weekly_task.next_run is not None and weekly_task.next_run > now:
-            continue
+        for weekly_task in WeeklyTask.objects.filter(enabled=True):
+            # Still enqueued for a future run; leave it alone.
+            if weekly_task.next_run is not None and weekly_task.next_run > now:
+                continue
 
-        underlying_task = schedulable.get(weekly_task.task)
-        if underlying_task is None:
-            continue
+            underlying_task = schedulable.get(weekly_task.task)
+            if underlying_task is None:
+                continue
 
-        run_at = weekly_task.next_occurrence(now)
-        if run_at is None:
-            continue
+            run_at = weekly_task.next_occurrence(now)
+            if run_at is None:
+                continue
 
-        kwargs = {}
-        if weekly_task.user_id is not None:
-            kwargs["username"] = weekly_task.user.username
+            kwargs = {}
+            if weekly_task.user_id is not None:
+                kwargs["username"] = weekly_task.user.username
 
-        underlying_task.using(run_after=run_at).enqueue(**kwargs)
-        weekly_task.next_run = run_at
-        weekly_task.save(update_fields=["next_run"])
+            try:
+                underlying_task.using(run_after=run_at).enqueue(**kwargs)
+            except Exception:
+                logger.exception("Failed to enqueue weekly task id=%s", weekly_task.pk)
+                continue
 
-    schedule_weekly_tasks.using(
-        run_after=now + timedelta(minutes=WEEKLY_SCHEDULER_INTERVAL_MINUTES),
-    ).enqueue()
+            weekly_task.next_run = run_at
+            weekly_task.save(update_fields=["next_run"])
+    finally:
+        # Always keep the scheduler chain alive, even if processing above failed.
+        schedule_weekly_tasks.using(
+            run_after=now + timedelta(minutes=WEEKLY_SCHEDULER_INTERVAL_MINUTES),
+        ).enqueue()
