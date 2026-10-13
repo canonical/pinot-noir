@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.utils import timezone
 from django_tasks import task
 from django_tasks_db.models import DBTaskResult
@@ -197,7 +198,8 @@ def refresh_merge_schedule(username: str, release_adjective: str | None = None) 
             service, backport_settings, valid_milestones, Merge.TYPE_BACKPORT, bugs_to_import
         )
 
-    imported_bug_ids: set[int] = set()
+    # Fetch everything from Launchpad first.
+    merges: list[Merge] = []
     for bug_id, (bug_record, milestone, merge_type) in bugs_to_import.items():
         try:
             full_bug = service.get_bug(bug_id, provider_name="launchpad")
@@ -208,21 +210,27 @@ def refresh_merge_schedule(username: str, release_adjective: str | None = None) 
         merge = merge_from_bug(bug_id, full_bug, milestone, merge_type)
         if merge is None:
             continue
-        Merge.objects.update_or_create(
-            lp_bug=merge.lp_bug,
-            defaults={
-                "package": merge.package,
-                "merge_type": merge.merge_type,
-                "assignee": merge.assignee,
-                "assignee_user": merge.assignee_user,
-                "milestone": merge.milestone,
-                "status": merge.status,
-            },
-        )
-        imported_bug_ids.add(merge.lp_bug)
+        merges.append(merge)
 
-    if imported_bug_ids:
-        Merge.objects.exclude(lp_bug__in=imported_bug_ids).delete()
+    # Update merge table atomically.
+    with transaction.atomic():
+        imported_bug_ids: set[int] = set()
+        for merge in merges:
+            Merge.objects.update_or_create(
+                lp_bug=merge.lp_bug,
+                defaults={
+                    "package": merge.package,
+                    "merge_type": merge.merge_type,
+                    "assignee": merge.assignee,
+                    "assignee_user": merge.assignee_user,
+                    "milestone": merge.milestone,
+                    "status": merge.status,
+                },
+            )
+            imported_bug_ids.add(merge.lp_bug)
+
+        if imported_bug_ids:
+            Merge.objects.exclude(lp_bug__in=imported_bug_ids).delete()
 
     PageMetadata.touch("merges-schedule")
 
@@ -253,7 +261,8 @@ def refresh_reviews(username: str) -> None:
     team_users = set(LPUser.objects.filter(is_team_member=True))
     team_usernames = set(user.username for user in team_users)
 
-    imported_mp_urls: set[str] = set()
+    # Collect reviews from Launchpad.
+    reviews_to_import: dict[str, dict] = {}
 
     for lp_user in team_users:
         try:
@@ -284,25 +293,26 @@ def refresh_reviews(username: str) -> None:
                         break
 
                 mp_url = mr.web_url or ""
-                Review.objects.update_or_create(
-                    mp_url=mp_url,
-                    defaults={
-                        "package": package,
-                        "release_version": release_version,
-                        "source_branch": mr.source_branch or "",
-                        "lines_added": mr.added_lines,
-                        "lines_removed": mr.removed_lines,
-                        "reviewer": reviewer_username,
-                        "reviewer_user": reviewer_user,
-                        "submitter": lp_user.username,
-                        "submitter_user": lp_user,
-                        "status": status,
-                    },
-                )
-                imported_mp_urls.add(mp_url)
+                reviews_to_import[mp_url] = {
+                    "package": package,
+                    "release_version": release_version,
+                    "source_branch": mr.source_branch or "",
+                    "lines_added": mr.added_lines,
+                    "lines_removed": mr.removed_lines,
+                    "reviewer": reviewer_username,
+                    "reviewer_user": reviewer_user,
+                    "submitter": lp_user.username,
+                    "submitter_user": lp_user,
+                    "status": status,
+                }
 
-    if imported_mp_urls:
-        Review.objects.exclude(mp_url__in=imported_mp_urls).delete()
+    # Atomically update the Review table.
+    with transaction.atomic():
+        for mp_url, defaults in reviews_to_import.items():
+            Review.objects.update_or_create(mp_url=mp_url, defaults=defaults)
+
+        if reviews_to_import:
+            Review.objects.exclude(mp_url__in=reviews_to_import.keys()).delete()
 
     PageMetadata.touch("reviews")
 
