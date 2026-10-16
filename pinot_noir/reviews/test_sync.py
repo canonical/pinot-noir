@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
-from pinot_noir.data_manager.helpers import review_status_from_merge_request
-from pinot_noir.data_manager.tasks import refresh_reviews
 from pinot_noir.launchpad.models import LPUser
 from pinot_noir.reviews.models import Review
+from pinot_noir.reviews.sync import review_status_from_merge_request
+from pinot_noir.reviews.tasks import refresh_reviews
 
 
 def _mr(web_url, status, **kwargs):
@@ -26,7 +26,7 @@ def _mr(web_url, status, **kwargs):
 
 
 class RefreshReviewsTests(TestCase):
-    @patch("pinot_noir.data_manager.tasks._get_launchpad_service_for_user")
+    @patch("pinot_noir.reviews.tasks.get_launchpad_service_for_user")
     def test_skips_rejected_and_superseded_merge_proposals(self, get_service_mock):
         submitter = LPUser.objects.create(username="graysonwolf", is_team_member=True)
         LPUser.objects.create(username="ubuntu-server", is_review_marker=True)

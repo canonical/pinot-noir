@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 
-from pinot_noir.data_manager.tasks import refresh_merge_schedule
+from pinot_noir.merges_schedule.tasks import refresh_merge_schedule
 
 
 class Command(BaseCommand):

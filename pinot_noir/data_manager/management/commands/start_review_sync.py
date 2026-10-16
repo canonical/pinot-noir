@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 
-from pinot_noir.data_manager.tasks import refresh_reviews
+from pinot_noir.reviews.tasks import refresh_reviews
 
 
 class Command(BaseCommand):

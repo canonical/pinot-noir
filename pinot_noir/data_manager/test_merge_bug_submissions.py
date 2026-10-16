@@ -15,7 +15,7 @@ from pinot_noir.launchpad.models import UbuntuRelease
 
 class MergeBugSubmissionPreparationTests(TestCase):
     @patch("pinot_noir.data_manager.tasks.prepare_merge_bugs_for_all_packages")
-    @patch("pinot_noir.data_manager.tasks._get_launchpad_service_for_user")
+    @patch("pinot_noir.data_manager.tasks.get_launchpad_service_for_user")
     def test_prepare_uses_active_users_token_and_all_packages(
         self, get_service_mock, prepare_all_mock
     ):
@@ -47,7 +47,7 @@ class MergeBugSubmissionPreparationTests(TestCase):
 
 
 class MergeBugSubmissionSubmitTests(TestCase):
-    @patch("pinot_noir.data_manager.tasks._get_launchpad_service_for_user")
+    @patch("pinot_noir.data_manager.tasks.get_launchpad_service_for_user")
     def test_submit_marks_successful_packages_filed(self, get_service_mock):
         user = User.objects.create_user(username="alice", password="pw")
         UserTokens.objects.create(user=user, lp_token="alice-token")

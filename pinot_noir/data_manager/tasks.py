@@ -1,76 +1,47 @@
-"""Periodic data-refresh tasks for the data_manager application."""
+"""Shared data_manager tasks: bug filing, task pruning and weekly scheduling.
+
+Page-specific sync tasks live with their apps (merges_schedule.tasks,
+reviews.tasks).
+"""
 
 import logging
 from datetime import timedelta
 
-from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
 from django.utils import timezone
 from django_tasks import task
 from django_tasks_db.models import DBTaskResult
-from ubq import QueryService
-from ubq.errors import RequestTimeoutError
-from ubq.models import BugSubmissionRecord, ProviderCredentials
+from ubq.models import BugSubmissionRecord
 
-from pinot_noir.data_manager.helpers import (
-    LP_REVIEW_SKIP_STATUSES,
-    collect_bugs_for_type,
-    merge_from_bug,
-    milestones_for_release,
-    package_from_url,
+from pinot_noir.data_manager.bug_filing import (
     prepare_backport_bugs_for_all_packages,
     prepare_merge_bugs_for_all_packages,
-    release_from_branch,
-    review_status_from_merge_request,
+)
+from pinot_noir.data_manager.common import (
+    get_devel_or_requested_release,
+    get_launchpad_service_for_user,
 )
 from pinot_noir.data_manager.models import (
     BackportBugFilterSettings,
     BackportBugPackageInfo,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
-    UserTokens,
     WeeklyTask,
 )
-from pinot_noir.launchpad.models import LPUser, UbuntuRelease
-from pinot_noir.merges_schedule.models import Merge
-from pinot_noir.pages.models import PageMetadata
-from pinot_noir.reviews.models import Review
 
-SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
+# Re-exported so task rows already queued under the old
+# ``pinot_noir.data_manager.tasks.<name>`` paths still resolve.
+from pinot_noir.merges_schedule.tasks import (  # noqa: F401
+    enqueue_all_merge_refreshes,
+    queue_single_merge_refresh,
+    refresh_merge_schedule,
+    refresh_single_merge,
+)
+from pinot_noir.reviews.tasks import refresh_reviews
+
 PRUNE_AGE_DAYS = 7
 STUCK_RUNNING_HOURS = 24
 WEEKLY_SCHEDULER_INTERVAL_MINUTES = 15
-
-
-def _get_devel_or_requested_release(release_adjective: str | None = None) -> UbuntuRelease:
-    """Return the UbuntuRelease for the given adjective, or the current devel release."""
-    if release_adjective:
-        try:
-            return UbuntuRelease.objects.get(adjective=release_adjective)
-        except UbuntuRelease.DoesNotExist:
-            raise ObjectDoesNotExist(
-                f"No Ubuntu release found with adjective '{release_adjective}'."
-            )
-
-    release = UbuntuRelease.objects.filter(status=UbuntuRelease.STATUS_DEVEL).first()
-    if release is None:
-        raise ObjectDoesNotExist("No Ubuntu development release found.")
-    return release
-
-
-def _get_launchpad_service_for_user(username: str) -> QueryService:
-    user = User.objects.get(username=username)
-    tokens = UserTokens.objects.filter(user=user).first()
-    if tokens is None or not tokens.lp_token:
-        raise ObjectDoesNotExist(f"No Launchpad token configured for user '{username}'.")
-
-    service = QueryService()
-    service.login(
-        provider_name="launchpad",
-        credentials=ProviderCredentials(token=tokens.lp_token),
-    )
-    return service
 
 
 def prepare_merge_bug_submissions(
@@ -78,7 +49,7 @@ def prepare_merge_bug_submissions(
     release_adjective: str | None = None,
 ) -> list[tuple[str, BugSubmissionRecord]]:
     """Prepare merge bug submissions for all packages using a user's LP token."""
-    ubuntu_release = _get_devel_or_requested_release(release_adjective)
+    ubuntu_release = get_devel_or_requested_release(release_adjective)
 
     filter_settings = MergeBugFilterSettings.objects.filter(
         settings_type=MergeBugFilterSettings.TYPE_MERGE
@@ -86,7 +57,7 @@ def prepare_merge_bug_submissions(
     if filter_settings is None:
         raise ObjectDoesNotExist("No merge bug filter settings found.")
 
-    service = _get_launchpad_service_for_user(username)
+    service = get_launchpad_service_for_user(username)
     return prepare_merge_bugs_for_all_packages(service, ubuntu_release, filter_settings)
 
 
@@ -98,7 +69,7 @@ def submit_prepared_merge_bug_submissions(
 
     Returns ``(submitted_count, failed_count)``.
     """
-    service = _get_launchpad_service_for_user(username)
+    service = get_launchpad_service_for_user(username)
 
     submitted_count = 0
     failed_count = 0
@@ -119,7 +90,7 @@ def prepare_backport_bug_submissions(
     release_adjective: str | None = None,
 ) -> list[tuple[str, BugSubmissionRecord]]:
     """Prepare backport bug submissions for all packages."""
-    ubuntu_release = _get_devel_or_requested_release(release_adjective)
+    ubuntu_release = get_devel_or_requested_release(release_adjective)
 
     filter_settings = BackportBugFilterSettings.objects.first()
     if filter_settings is None:
@@ -136,7 +107,7 @@ def submit_prepared_backport_bug_submissions(
 
     Returns ``(submitted_count, failed_count)``.
     """
-    service = _get_launchpad_service_for_user(username)
+    service = get_launchpad_service_for_user(username)
 
     submitted_count = 0
     failed_count = 0
@@ -166,243 +137,6 @@ def submit_backport_bugs(username: str, release_adjective: str | None = None) ->
     submissions = prepare_backport_bug_submissions(username, release_adjective)
     if submissions:
         submit_prepared_backport_bug_submissions(username, submissions)
-
-
-@task()
-def refresh_merge_schedule(username: str, release_adjective: str | None = None) -> None:
-    """Wipe the merge schedule, re-import bugs, then enqueue per-bug refreshes.
-
-    Looks up the Ubuntu release by its adjective or uses devel by default, computes
-    the six monthly milestones for that release cycle, then queries Launchpad for
-    all bugs whose tags match ``MergeBugFilterSettings`` or
-    ``BackportBugFilterSettings`` and whose milestone falls within that range.
-    The ``Merge`` table is atomically replaced with the imported results.  Once
-    the schedule is synced, staggered per-bug refresh tasks are enqueued for
-    every imported bug.
-    """
-    release = _get_devel_or_requested_release(release_adjective)
-
-    valid_milestones = milestones_for_release(release.version)
-    merge_settings = MergeBugFilterSettings.objects.filter(
-        settings_type=MergeBugFilterSettings.TYPE_MERGE
-    ).first()
-    backport_settings = BackportBugFilterSettings.objects.first()
-
-    service = _get_launchpad_service_for_user(username)
-
-    bugs_to_import: dict[str, tuple] = {}
-    if merge_settings:
-        collect_bugs_for_type(
-            service, merge_settings, valid_milestones, Merge.TYPE_MERGE, bugs_to_import
-        )
-    if backport_settings:
-        collect_bugs_for_type(
-            service, backport_settings, valid_milestones, Merge.TYPE_BACKPORT, bugs_to_import
-        )
-
-    # Fetch everything from Launchpad first.
-    merges: list[Merge] = []
-    for bug_id, (bug_record, milestone, merge_type) in bugs_to_import.items():
-        try:
-            full_bug = service.get_bug(bug_id, provider_name="launchpad")
-        except RequestTimeoutError:
-            continue
-        if full_bug is None:
-            continue
-        merge = merge_from_bug(bug_id, full_bug, milestone, merge_type)
-        if merge is None:
-            continue
-        merges.append(merge)
-
-    # Update merge table atomically.
-    with transaction.atomic():
-        imported_bug_ids: set[int] = set()
-        for merge in merges:
-            Merge.objects.update_or_create(
-                lp_bug=merge.lp_bug,
-                defaults={
-                    "package": merge.package,
-                    "merge_type": merge.merge_type,
-                    "assignee": merge.assignee,
-                    "assignee_user": merge.assignee_user,
-                    "milestone": merge.milestone,
-                    "status": merge.status,
-                },
-            )
-            imported_bug_ids.add(merge.lp_bug)
-
-        if imported_bug_ids:
-            Merge.objects.exclude(lp_bug__in=imported_bug_ids).delete()
-
-    PageMetadata.touch("merges-schedule")
-
-    enqueue_all_merge_refreshes(username)
-
-
-@task()
-def refresh_reviews(username: str) -> None:
-    """Replace the reviews table with current merge request data from Launchpad.
-
-    Iterates over all stored LPUser records, queries Launchpad for each user's
-    open merge proposals via ubq, then atomically replaces the contents of the
-    reviews table.
-    """
-
-    DBTaskResult.objects.filter(
-        task_path=refresh_reviews.module_path,
-        status="READY",
-        run_after__lte=timezone.now(),
-    ).delete()
-
-    service = _get_launchpad_service_for_user(username)
-
-    marker_usernames = set(
-        LPUser.objects.filter(is_review_marker=True).values_list("username", flat=True)
-    )
-
-    team_users = set(LPUser.objects.filter(is_team_member=True))
-    team_usernames = set(user.username for user in team_users)
-
-    # Collect reviews from Launchpad.
-    reviews_to_import: dict[str, dict] = {}
-
-    for lp_user in team_users:
-        try:
-            merge_requests = service.get_merge_requests_from_user(
-                user_id=lp_user.username,
-                provider_name="launchpad",
-            )
-        except RequestTimeoutError:
-            continue
-        for mr in merge_requests:
-            if mr.status in LP_REVIEW_SKIP_STATUSES:
-                continue
-
-            package = package_from_url(mr.web_url or "")
-            release_version = release_from_branch(mr.target_branch)
-            status = review_status_from_merge_request(mr, team_usernames)
-
-            reviewer_username = ""
-            reviewer_user = None
-            if mr.assignees and any(a.username in marker_usernames for a in mr.assignees):
-                for assignee in mr.assignees:
-                    matched_lp_user = LPUser.objects.filter(
-                        username=assignee.username, is_review_marker=False
-                    ).first()
-                    if matched_lp_user:
-                        reviewer_username = assignee.username
-                        reviewer_user = matched_lp_user
-                        break
-
-                mp_url = mr.web_url or ""
-                reviews_to_import[mp_url] = {
-                    "package": package,
-                    "release_version": release_version,
-                    "source_branch": mr.source_branch or "",
-                    "lines_added": mr.added_lines,
-                    "lines_removed": mr.removed_lines,
-                    "reviewer": reviewer_username,
-                    "reviewer_user": reviewer_user,
-                    "submitter": lp_user.username,
-                    "submitter_user": lp_user,
-                    "status": status,
-                }
-
-    # Atomically update the Review table.
-    with transaction.atomic():
-        for mp_url, defaults in reviews_to_import.items():
-            Review.objects.update_or_create(mp_url=mp_url, defaults=defaults)
-
-        if reviews_to_import:
-            Review.objects.exclude(mp_url__in=reviews_to_import.keys()).delete()
-
-    PageMetadata.touch("reviews")
-
-
-@task()
-def refresh_single_merge(username: str, bug_id: int) -> None:
-    """Refresh a single Merge record by its Launchpad bug ID.
-
-    Fetches the latest bug data from Launchpad and updates (or creates) the
-    corresponding ``Merge`` row.  If the bug cannot be fetched or parsed the
-    existing record is left unchanged.
-    """
-    existing = Merge.objects.filter(lp_bug=bug_id).first()
-
-    service = _get_launchpad_service_for_user(username)
-
-    try:
-        full_bug = service.get_bug(str(bug_id), provider_name="launchpad")
-    except RequestTimeoutError:
-        return
-    if full_bug is None:
-        return
-
-    if full_bug.bug_tasks and full_bug.bug_tasks[0].status == "Invalid":
-        Merge.objects.filter(lp_bug=bug_id).delete()
-        return
-
-    merge_type = existing.merge_type if existing else Merge.TYPE_MERGE
-    milestone = existing.milestone if existing else ""
-
-    merge = merge_from_bug(str(bug_id), full_bug, milestone, merge_type)
-    if merge is None:
-        return
-
-    Merge.objects.update_or_create(
-        lp_bug=bug_id,
-        defaults={
-            "package": merge.package,
-            "merge_type": merge.merge_type,
-            "assignee": merge.assignee,
-            "assignee_user": merge.assignee_user,
-            "milestone": merge.milestone,
-            "status": merge.status,
-        },
-    )
-
-
-@task()
-def queue_single_merge_refresh(username: str, bug_id: int) -> None:
-    """Enqueue a refresh for *bug_id* and re-schedule it after the refresh interval.
-
-    If the Merge no longer exists (e.g. it was invalidated), the cycle stops.
-    """
-    if not Merge.objects.filter(lp_bug=bug_id).exists():
-        return
-    refresh_single_merge.enqueue(username, bug_id)
-    queue_single_merge_refresh.using(
-        run_after=timezone.now() + timedelta(hours=SINGLE_MERGE_REFRESH_INTERVAL_HOURS),
-    ).enqueue(username, bug_id)
-
-
-def enqueue_all_merge_refreshes(username: str) -> None:
-    """Enqueue staggered ``queue_single_merge_refresh`` tasks for every bug in the Merge table.
-
-    Initial runs are spread evenly across ``SINGLE_MERGE_REFRESH_INTERVAL_HOURS`` so that
-    subsequent periodic refreshes remain staggered rather than firing all at once.
-    """
-    # Clear existing queued single-merge refreshes to avoid duplicates
-    DBTaskResult.objects.filter(
-        task_path__in=[
-            queue_single_merge_refresh.module_path,
-            refresh_single_merge.module_path,
-        ],
-        status="READY",
-    ).delete()
-
-    bug_ids = list(
-        Merge.objects.exclude(status=Merge.STATUS_DONE).values_list("lp_bug", flat=True)
-    )
-    count = len(bug_ids)
-    if not count:
-        return
-
-    for i, bug_id in enumerate(bug_ids):
-        delay_hours = i * SINGLE_MERGE_REFRESH_INTERVAL_HOURS / count
-        queue_single_merge_refresh.using(
-            run_after=timezone.now() + timedelta(hours=delay_hours),
-        ).enqueue(username, bug_id)
 
 
 def sync_merge_packages_from_yaml(packages: set[str]) -> tuple[int, int]:

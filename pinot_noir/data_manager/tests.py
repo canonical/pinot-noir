@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from django.test import SimpleTestCase
 
-from pinot_noir.data_manager.helpers import (
+from pinot_noir.data_manager.bug_filing import (
     MergePackageVersionInfo,
     changelog_diff_since_common,
     prepare_merge_bug,
