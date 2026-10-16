@@ -281,7 +281,7 @@ def prepare_merge_bugs_for_all_packages(
                 package_settings=package_settings,
                 filter_settings=filter_settings,
             )
-        except ValueError as exc:
+        except ValueError:
             # python-debian raises ValueError for version strings it can't parse
             # skip package merge bug if so
             continue
