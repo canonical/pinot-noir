@@ -5,6 +5,8 @@ from django.contrib.sites.models import Site
 from django.db import models
 from django.utils import timezone
 
+from pinot_noir.pages.registry import get_pages
+
 from .fields import EncryptedTextField
 
 
@@ -127,16 +129,14 @@ class BackportBugFilterSettings(MergeBugFilterSettings):
 class WeeklyTask(models.Model):
     """A task to enqueue at a set time on a chosen set of days of the week."""
 
-    TASK_REFRESH_REVIEWS = "refresh_reviews"
     TASK_PRUNE_TASK_RESULTS = "prune_task_results"
-    TASK_REFRESH_MERGE_SCHEDULE = "refresh_merge_schedule"
     TASK_SUBMIT_MERGE_BUGS = "submit_merge_bugs"
     TASK_SUBMIT_BACKPORT_BUGS = "submit_backport_bugs"
 
-    TASK_CHOICES = [
-        (TASK_REFRESH_REVIEWS, "Refresh reviews"),
+    # Non-page tasks. Page refresh tasks are added from the page registry by
+    # task_choices(), so new pages don't need a migration here.
+    BASE_TASK_CHOICES = [
         (TASK_PRUNE_TASK_RESULTS, "Prune task results"),
-        (TASK_REFRESH_MERGE_SCHEDULE, "Refresh merge schedule"),
         (TASK_SUBMIT_MERGE_BUGS, "Submit merge bugs"),
         (TASK_SUBMIT_BACKPORT_BUGS, "Submit backport bugs"),
     ]
@@ -151,7 +151,8 @@ class WeeklyTask(models.Model):
         "sunday",
     )
 
-    task = models.CharField(max_length=50, choices=TASK_CHOICES)
+    # Name of the task function; see task_choices() for the valid values.
+    task = models.CharField(max_length=50)
 
     # Django user whose username is passed to the task when enqueued.
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -177,8 +178,18 @@ class WeeklyTask(models.Model):
         ordering = ["time_of_day"]
 
     def __str__(self) -> str:
-        task_label = dict(self.TASK_CHOICES).get(self.task, self.task)
+        task_label = dict(self.task_choices()).get(self.task, self.task)
         return f"{task_label} ({self.active_days_display()} {self.time_of_day})"
+
+    @classmethod
+    def task_choices(cls) -> list[tuple[str, str]]:
+        """Return (task name, label) pairs: one refresh per page, then base tasks."""
+        page_choices = [
+            (page.refresh_task_name, f"Refresh {page.label.lower()}")
+            for page in get_pages()
+            if page.refresh_task_name
+        ]
+        return page_choices + cls.BASE_TASK_CHOICES
 
     def active_days_display(self) -> str:
         """Return a human-readable list of the active weekdays."""

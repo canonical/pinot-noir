@@ -9,6 +9,7 @@ from ubq.errors import RequestTimeoutError
 from pinot_noir.data_manager.common import get_launchpad_service_for_user
 from pinot_noir.launchpad.models import LPUser
 from pinot_noir.pages.models import PageMetadata
+from pinot_noir.reviews.apps import PAGE_SLUG
 from pinot_noir.reviews.models import Review
 from pinot_noir.reviews.sync import ReviewData, review_from_merge_request
 
@@ -84,4 +85,4 @@ def refresh_reviews(username: str) -> None:
         if reviews_to_import:
             Review.objects.exclude(mp_url__in=reviews_to_import.keys()).delete()
 
-    PageMetadata.touch("reviews")
+    PageMetadata.touch(PAGE_SLUG)

@@ -2,9 +2,8 @@ from django.shortcuts import render
 
 from pinot_noir.pages.models import PageMetadata
 
+from .apps import PAGE_SLUG
 from .models import Review
-
-PAGE_SLUG = "reviews"
 
 STATUS_ORDER = {
     Review.STATUS_NEEDS_REVIEW: 0,

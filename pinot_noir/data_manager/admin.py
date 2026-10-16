@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.sites.models import Site
 
@@ -150,6 +151,11 @@ class WeeklyTaskAdmin(admin.ModelAdmin):
     list_display = ("task", "user", "active_days_display", "time_of_day", "enabled", "next_run")
     list_filter = ("enabled", "task")
     readonly_fields = ("next_run",)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == "task":
+            return forms.ChoiceField(choices=WeeklyTask.task_choices(), label="Task")
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
 
     @admin.display(description="Days")
     def active_days_display(self, obj):

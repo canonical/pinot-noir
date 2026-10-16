@@ -112,24 +112,6 @@ TASKS = {
     }
 }
 
-# Sidebar navigation. Add a new dict here when introducing a new data page.
-# `slug` is the PageMetadata key for that page; `url_name` is a namespaced
-# Django URL name resolved at request time.
-PINOT_NOIR_NAV = [
-    {
-        "slug": "merges-schedule",
-        "label": "Merge Schedule",
-        "url_name": "merges_schedule:index",
-        "icon": "circle-of-friends",
-    },
-    {
-        "slug": "reviews",
-        "label": "Reviews",
-        "url_name": "reviews:index",
-        "icon": "circle-of-friends",
-    },
-]
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
