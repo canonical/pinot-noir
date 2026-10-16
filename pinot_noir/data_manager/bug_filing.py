@@ -274,12 +274,17 @@ def prepare_merge_bugs_for_all_packages(
     """
     submissions: list[tuple[str, BugSubmissionRecord]] = []
     for package_settings in MergeBugPackageInfo.objects.order_by("package"):
-        submission = prepare_merge_bug(
-            queryService=queryService,
-            ubuntu_release=ubuntu_release,
-            package_settings=package_settings,
-            filter_settings=filter_settings,
-        )
+        try:
+            submission = prepare_merge_bug(
+                queryService=queryService,
+                ubuntu_release=ubuntu_release,
+                package_settings=package_settings,
+                filter_settings=filter_settings,
+            )
+        except ValueError as exc:
+            # python-debian raises ValueError for version strings it can't parse
+            # skip package merge bug if so
+            continue
         if submission is not None:
             print(f"Prepared merge bug for {package_settings.package}")
             submissions.append((package_settings.package, submission))
