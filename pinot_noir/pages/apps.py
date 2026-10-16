@@ -7,6 +7,6 @@ class PagesConfig(AppConfig):
     label = "pages"
 
     def ready(self):
-        from . import signals
+        from . import signals  # noqa: PLC0415
 
         signals.connect(self)

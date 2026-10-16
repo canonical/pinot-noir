@@ -51,7 +51,7 @@ class UserTokensEncryptionTests(TestCase):
 
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT lp_token FROM data_manager_usertokens WHERE user_id = %s", [user.id]
+                "SELECT lp_token FROM data_manager_usertokens WHERE user_id = %s", [user.pk]
             )
             db_token = cursor.fetchone()[0]
 

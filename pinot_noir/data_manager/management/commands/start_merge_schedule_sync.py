@@ -32,6 +32,4 @@ class Command(BaseCommand):
         release_adjective = options["release_adjective"]
         refresh_merge_schedule.enqueue(options["username"], release_adjective)
         target = release_adjective or "the development release"
-        self.stdout.write(
-            self.style.SUCCESS(f"Merge schedule sync enqueued for {target}.")
-        )
+        self.stdout.write(self.style.SUCCESS(f"Merge schedule sync enqueued for {target}."))

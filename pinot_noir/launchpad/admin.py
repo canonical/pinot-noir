@@ -50,13 +50,12 @@ class LPUserAdmin(admin.ModelAdmin):
         "gravatar_preview",
     )
 
+    @admin.display(description="Gravatar")
     def gravatar_preview(self, obj):
         if not obj or not obj.email_md5:
             return ""
         url = f"https://www.gravatar.com/avatar/{obj.email_md5}?s=48&d=identicon"
         return mark_safe(f'<img src="{url}" alt="{obj.username}" width="48" height="48" />')
-
-    gravatar_preview.short_description = "Gravatar"
 
 
 @admin.register(UbuntuRelease)

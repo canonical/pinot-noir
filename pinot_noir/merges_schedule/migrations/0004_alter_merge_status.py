@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("merges_schedule", "0003_populate_assignee_user"),
     ]

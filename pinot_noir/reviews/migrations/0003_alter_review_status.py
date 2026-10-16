@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("reviews", "0002_review_lines_added_review_lines_removed_and_more"),
     ]

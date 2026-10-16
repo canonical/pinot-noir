@@ -12,9 +12,7 @@ def nav_entries(request):
     row has ``enabled=False`` are filtered out. ``is_active`` is set when the
     request path matches the entry's URL (or sits below it).
     """
-    disabled_slugs = set(
-        PageMetadata.objects.filter(enabled=False).values_list("slug", flat=True)
-    )
+    disabled_slugs = set(PageMetadata.objects.filter(enabled=False).values_list("slug", flat=True))
     entries = []
     current_path = getattr(request, "path", "") or ""
     for entry in getattr(settings, "PINOT_NOIR_NAV", []):

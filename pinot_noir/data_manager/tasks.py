@@ -49,7 +49,9 @@ def _get_devel_or_requested_release(release_adjective: str | None = None) -> Ubu
         try:
             return UbuntuRelease.objects.get(adjective=release_adjective)
         except UbuntuRelease.DoesNotExist:
-            raise ObjectDoesNotExist(f"No Ubuntu release found with adjective '{release_adjective}'.")
+            raise ObjectDoesNotExist(
+                f"No Ubuntu release found with adjective '{release_adjective}'."
+            )
 
     release = UbuntuRelease.objects.filter(status=UbuntuRelease.STATUS_DEVEL).first()
     if release is None:
@@ -465,7 +467,8 @@ def get_schedulable_tasks() -> dict:
         submit_merge_bugs,
         submit_backport_bugs,
     )
-    return {t.func.__name__: t for t in schedulable}
+    return {t.name: t for t in schedulable}
+
 
 @task()
 def schedule_weekly_tasks() -> None:
@@ -494,7 +497,7 @@ def schedule_weekly_tasks() -> None:
                 continue
 
             kwargs = {}
-            if weekly_task.user_id is not None:
+            if weekly_task.user is not None:
                 kwargs["username"] = weekly_task.user.username
 
             try:

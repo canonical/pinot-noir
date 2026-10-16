@@ -177,7 +177,8 @@ class WeeklyTask(models.Model):
         ordering = ["time_of_day"]
 
     def __str__(self) -> str:
-        return f"{self.get_task_display()} ({self.active_days_display()} {self.time_of_day})"
+        task_label = dict(self.TASK_CHOICES).get(self.task, self.task)
+        return f"{task_label} ({self.active_days_display()} {self.time_of_day})"
 
     def active_days_display(self) -> str:
         """Return a human-readable list of the active weekdays."""

@@ -48,8 +48,9 @@ class Command(BaseCommand):
             help="Submit all prepared submissions to Launchpad.",
         )
 
-    def _process_type(
+    def _process_type(  # noqa: PLR0913
         self,
+        *,
         label: str,
         prepare_fn: Callable,
         submit_fn: Callable,

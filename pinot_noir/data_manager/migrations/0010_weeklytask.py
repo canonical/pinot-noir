@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("data_manager", "0009_delete_lpreviewmarkeruser"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

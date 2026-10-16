@@ -111,14 +111,12 @@ def changelog_diff_since_common(ubuntu_changelog: str, debian_changelog: str) ->
 
     if debian_new:
         sections.append(
-            "### New Debian Changes ###\n\n"
-            + "".join(str(block) for block in debian_new)
+            "### New Debian Changes ###\n\n" + "".join(str(block) for block in debian_new)
         )
 
     if ubuntu_new:
         sections.append(
-            "### Old Ubuntu Delta ###\n\n"
-            + "".join(str(block) for block in ubuntu_new)
+            "### Old Ubuntu Delta ###\n\n" + "".join(str(block) for block in ubuntu_new)
         )
     return "\n".join(sections)
 
@@ -306,9 +304,14 @@ def review_status_from_merge_request(
     if status != Review.STATUS_NEEDS_REVIEW:
         return status
 
+    return _status_from_votes(_latest_votes(mr.votes), team_usernames)
+
+
+def _latest_votes(votes: list[MergeRequestVoteRecord]) -> list[MergeRequestVoteRecord]:
+    """Return only the most recent vote from each voter."""
     latest_votes: dict[str, MergeRequestVoteRecord] = {}
-    for vote in mr.votes:
-        username = vote.voter.username
+    for vote in votes:
+        username = vote.voter.username or ""
         current = latest_votes.get(username)
         if current is None:
             latest_votes[username] = vote
@@ -317,13 +320,17 @@ def review_status_from_merge_request(
             current.voted_at is None or vote.voted_at >= current.voted_at
         ):
             latest_votes[username] = vote
+    return list(latest_votes.values())
 
+
+def _status_from_votes(votes: list[MergeRequestVoteRecord], team_usernames: set[str]) -> str:
+    """Return the Review status implied by a set of (latest) review votes."""
     has_needs_fixing = False
     has_needs_information = False
     has_team_approval = False
     has_community_approval = False
 
-    for vote in latest_votes.values():
+    for vote in votes:
         mapped = LP_VOTE_STATUS_MAP.get(vote.vote or "")
         if mapped == Review.STATUS_NEEDS_FIXING:
             has_needs_fixing = True

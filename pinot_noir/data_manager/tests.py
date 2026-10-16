@@ -28,7 +28,7 @@ def _make_info(
     devel_series: str = "devel",
 ) -> MergePackageVersionInfo:
     """Build a MergePackageVersionInfo with the given versions already loaded."""
-    versions = {
+    versions: dict[tuple, MagicMock | None] = {
         ("ubuntu", devel_series, "Proposed"): _mock_version(proposed),
         ("ubuntu", devel_series, "Release"): _mock_version(release),
         ("debian", "sid", "Release"): _mock_version(unstable),
@@ -190,7 +190,7 @@ def _make_merge_service(
     experimental: str = "",
 ) -> MagicMock:
     """Return a mocked QueryService serving the given package versions."""
-    versions = {
+    versions: dict[tuple, MagicMock | None] = {
         ("ubuntu", release_mock.adjective, "Proposed"): _mock_version(proposed),
         ("ubuntu", release_mock.adjective, "Release"): _mock_version(release_ver),
         ("debian", "sid", "Release"): _mock_version(unstable),

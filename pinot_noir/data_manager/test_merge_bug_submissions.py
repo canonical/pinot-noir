@@ -39,10 +39,10 @@ class MergeBugSubmissionPreparationTests(TestCase):
         expected = [("pkg", MagicMock())]
         prepare_all_mock.return_value = expected
 
-        result = prepare_merge_bug_submissions(user)
+        result = prepare_merge_bug_submissions(user.username)
 
         self.assertEqual(result, expected)
-        get_service_mock.assert_called_once_with(user)
+        get_service_mock.assert_called_once_with(user.username)
         prepare_all_mock.assert_called_once()
 
 
@@ -77,7 +77,7 @@ class MergeBugSubmissionSubmitTests(TestCase):
         get_service_mock.return_value = service
 
         submitted, failed = submit_prepared_merge_bug_submissions(
-            user,
+            user.username,
             [("okpkg", submit_ok), ("failpkg", submit_fail)],
         )
 
