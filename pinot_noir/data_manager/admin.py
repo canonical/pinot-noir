@@ -65,7 +65,7 @@ class MergeBugPackageInfoAdmin(admin.ModelAdmin):
     @admin.action(description="Prepare and submit merge bugs to Launchpad")
     def prepare_and_submit_merge_bugs(self, request, queryset):
         try:
-            submissions = prepare_merge_bug_submissions(user=request.user)
+            submissions = prepare_merge_bug_submissions(username=request.user.username)
         except Exception as exc:
             self.message_user(request, f"Failed to prepare submissions: {exc}", messages.ERROR)
             return
@@ -76,7 +76,7 @@ class MergeBugPackageInfoAdmin(admin.ModelAdmin):
 
         try:
             submitted, failed = submit_prepared_merge_bug_submissions(
-                user=request.user, submissions=submissions
+                username=request.user.username, submissions=submissions
             )
         except Exception as exc:
             self.message_user(request, f"Failed to submit bugs: {exc}", messages.ERROR)
