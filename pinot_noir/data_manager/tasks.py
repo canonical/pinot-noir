@@ -37,7 +37,8 @@ from pinot_noir.merges_schedule.tasks import (  # noqa: F401
     refresh_merge_schedule,
     refresh_single_merge,
 )
-from pinot_noir.reviews.tasks import refresh_reviews
+from pinot_noir.pages.registry import get_pages
+from pinot_noir.reviews.tasks import refresh_reviews  # noqa: F401
 
 PRUNE_AGE_DAYS = 7
 STUCK_RUNNING_HOURS = 24
@@ -193,14 +194,12 @@ def prune_task_results(username: str | None = None) -> None:
 
 
 def get_schedulable_tasks() -> dict:
-    """Return a mapping of WeeklyTask task keys to their task callables."""
-    schedulable = (
-        refresh_reviews,
-        prune_task_results,
-        refresh_merge_schedule,
-        submit_merge_bugs,
-        submit_backport_bugs,
-    )
+    """Return a mapping of WeeklyTask task keys to their task callables.
+
+    Page refresh tasks come from the page registry; the rest are listed here.
+    """
+    schedulable = [task for page in get_pages() if (task := page.get_refresh_task()) is not None]
+    schedulable += [prune_task_results, submit_merge_bugs, submit_backport_bugs]
     return {t.name: t for t in schedulable}
 
 

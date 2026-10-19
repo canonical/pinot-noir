@@ -19,6 +19,7 @@ from pinot_noir.data_manager.models import (
     MergeBugFilterSettings,
 )
 from pinot_noir.launchpad.models import LPUser
+from pinot_noir.merges_schedule.apps import PAGE_SLUG
 from pinot_noir.merges_schedule.models import Merge
 from pinot_noir.merges_schedule.sync import MergeData, collect_bugs_for_type, merge_from_bug
 from pinot_noir.pages.models import PageMetadata
@@ -105,7 +106,7 @@ def refresh_merge_schedule(username: str, release_adjective: str | None = None) 
         if merges:
             Merge.objects.exclude(lp_bug__in=[m.lp_bug for m in merges]).delete()
 
-    PageMetadata.touch("merges-schedule")
+    PageMetadata.touch(PAGE_SLUG)
 
     enqueue_all_merge_refreshes(username)
 

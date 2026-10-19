@@ -3,9 +3,8 @@ from django.shortcuts import render
 from pinot_noir.launchpad.models import UbuntuRelease
 from pinot_noir.pages.models import PageMetadata
 
+from .apps import PAGE_SLUG
 from .models import Merge
-
-PAGE_SLUG = "merges-schedule"
 
 # Custom status ordering used both for sorting and for constructing the statuses list
 STATUS_ORDER = {

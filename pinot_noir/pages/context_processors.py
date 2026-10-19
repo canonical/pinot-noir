@@ -1,32 +1,32 @@
-from django.conf import settings
 from django.urls import NoReverseMatch, reverse
 
 from .models import PageMetadata
+from .registry import get_pages
 
 
 def nav_entries(request):
-    """Expose the configured sidebar nav as ``nav_entries`` to all templates.
+    """Expose the sidebar nav as ``nav_entries`` to all templates.
 
-    Each entry resolves its URL from ``url_name`` so apps can move their
-    routes without editing the base template. Entries whose ``PageMetadata``
-    row has ``enabled=False`` are filtered out. ``is_active`` is set when the
-    request path matches the entry's URL (or sits below it).
+    Entries come from the page registry (``page`` on each AppConfig). Pages
+    whose ``PageMetadata`` row has ``enabled=False`` are filtered out.
+    ``is_active`` is set when the request path matches the entry's URL (or
+    sits below it).
     """
     disabled_slugs = set(PageMetadata.objects.filter(enabled=False).values_list("slug", flat=True))
     entries = []
     current_path = getattr(request, "path", "") or ""
-    for entry in getattr(settings, "PINOT_NOIR_NAV", []):
-        if entry["slug"] in disabled_slugs:
+    for page in get_pages():
+        if page.slug in disabled_slugs:
             continue
         try:
-            url = reverse(entry["url_name"])
+            url = reverse(page.url_name)
         except NoReverseMatch:
-            url = entry.get("fallback_url", "#")
+            url = "#"
         entries.append(
             {
-                "slug": entry["slug"],
-                "label": entry["label"],
-                "icon": entry.get("icon", ""),
+                "slug": page.slug,
+                "label": page.label,
+                "icon": page.icon,
                 "url": url,
                 "is_active": current_path == url
                 or (url != "/" and current_path.startswith(url + "/")),
