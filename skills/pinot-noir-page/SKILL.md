@@ -1,7 +1,7 @@
 ---
 name: pinot-noir-page
-description: "Use when adding a new data page (sidebar entry + table backed by a Launchpad/ubq sync task) to the Pinot Noir Django app. Checklist: AppConfig page declaration (registry drives nav, URLs, PageMetadata, scheduling, refresh_page), model, sync/tasks split, template, tests, tox."
-version: 1.1.0
+description: "Use when adding a new data page (sidebar entry + table backed by a Launchpad/ubq or third-party-library sync task) to the Pinot Noir Django app. Checklist: AppConfig page declaration (registry drives nav, URLs, PageMetadata, scheduling, refresh_page), model, sync/tasks split, template, tests, tox."
+version: 1.3.0
 author: Lena Voytek
 metadata:
     tags: [pinot-noir, django, pages, ubq, launchpad, vanilla-framework]
@@ -17,6 +17,9 @@ The two existing pages are the reference implementations:
 
 - `pinot_noir/reviews/` (simplest; copy this one)
 - `pinot_noir/merges_schedule/` (adds per-row follow-up tasks and a panel)
+- `pinot_noir/bug_triage/` (data from a third-party library, startriage,
+  instead of ubq; snapshot replace; admin-editable config models; optional AI
+  step; collapsible per-item details instead of a wide table)
 
 A page app owns everything specific to it:
 
@@ -104,6 +107,14 @@ retype the string.
   `reviewer_user`), because not every Launchpad user has an LPUser row.
 - Put status values in class constants plus `STATUS_CHOICES`.
 - Run `uv run manage.py makemigrations <app>`.
+- Settings for the page go in a model in the app, edited in admin: one row per
+  item for lists (e.g. `StartriageTeam`), or a single-row settings model whose
+  ModelAdmin refuses adding a second row in `has_add_permission`. Store list
+  values as comma-separated `*_combined` fields like the other settings models.
+  Validate them in `clean()` against the library's own config model.
+- Per-user secrets (API tokens) go on `data_manager.UserTokens` as
+  `EncryptedTextField(blank=True, default="")`, with a `masked_<field>` admin
+  display returning `"********"`. Never put secrets on page settings models.
 
 ### 3. sync.py (pure mapping)
 
@@ -130,6 +141,50 @@ with `refresh_page --release`.
 
 Never make network calls inside the transaction.
 
+#### Data from a third-party library instead of ubq
+
+`bug_triage/tasks.py` is the reference:
+
+- Add the library with `uv add '<pkg>>=<ver>'` (plus `[extra]` if needed) and
+  code against the released version that pip installs, not the GitHub main
+  branch. Diff them first if unsure.
+- Use the library's Python API, not its CLI. If its CLI has an output mode
+  you are mirroring (e.g. `--html`), call the same functions that mode uses so
+  the rows match.
+- Build the library's config in code from Django models (see
+  `sync.build_config`). Don't read its shipped defaults or `~/.config` files,
+  so the page only depends on what's in the admin.
+- Async libraries: `asyncio.run(...)` in the task, outside the transaction.
+  Blocking calls inside that (launchpadlib attribute access) go through
+  `asyncio.to_thread`.
+- Launchpad login: reuse the user's stored `UserTokens.lp_token`
+  (`Credentials.from_string`). If the library only logs in through its own
+  function, swap it with `mock.patch.object(module, "fn", replacement)` under a
+  `threading.Lock` for the duration of the fetch. Plain attribute assignment
+  fails `ty` (function types are nominal).
+- If the library's high-level helper only returns rendered text (markdown)
+  and the page needs the per-item data, mirror the helper's setup in a small
+  task function and call the lower-level pieces it calls (see
+  `bug_triage.tasks._run_ai`). Point at the helper in the docstring so the
+  copy can be checked on the next library update.
+- Library updates: download the new and old wheels from PyPI and diff them
+  (`pip download --no-deps startriage==X -d dir`, unzip, `diff -ru`). Check
+  every symbol the app imports, any copied logic (headings, date ranges), and
+  the config model's fields, which the settings model and admin mirror.
+  Bump the floor in `pyproject.toml`, then `uv lock -P <pkg>`.
+- Snapshot data (e.g. one triage day) can replace the whole table in the
+  transaction instead of upserting. Still keep the old rows when every source
+  failed, and raise so the task shows as failed.
+
+#### Extra task parameters
+
+`refresh_page` forwards `--release`, `--team`, `--triage-day` and `--ai` as
+task kwargs, but only when given, so other pages' tasks don't receive
+unknown kwargs. Add new options the same way (and a test in `pages/tests.py`).
+For on/off behaviour, take `flag: bool | None = None` in the task, with `None`
+meaning "use the admin setting", so scheduled runs follow the setting and
+`refresh_page --flag` can force it.
+
 ### 5. Views and URLs
 
 - `urls.py`: `app_name = "<app label>"`,
@@ -154,6 +209,14 @@ Copy `reviews/templates/reviews/index.html` and change:
 - the table columns: `<th aria-sort="none">` makes a column sortable via
   `tablesorting.js`
 - keep the `page_meta.last_refreshed_at` footer block
+
+Long per-item details (description, analysis): instead of a wide table, use a
+`<ul class="p-list--divided">` with one native
+`<details class="u-no-margin--bottom">` per item. The `<summary>` holds only
+the link and title, and a small two-column table inside holds the rest
+(`<colgroup><col style="width: 10rem;"><col></colgroup>`). Nest another
+`<details>` to collapse long text. No JS needed, but there's no
+`tablesorting.js` sorting, so keep the source's order.
 
 ### 7. Scheduling and a manual trigger
 
@@ -188,7 +251,14 @@ uv run manage.py refresh_page <slug> --username <you>   # with a worker running
 ```
 
 `uvx tox -e format` fixes formatting. ty needs django-stubs (already in the
-lint group).
+lint group). It runs `ruff check --fix` first and stops on errors it can't
+fix (e.g. E501 in fresh migrations), so `ruff format` never runs. Then run
+`.tox/format/bin/ruff format pinot_noir` directly.
+
+To look at the page, run `uv run manage.py runserver 127.0.0.1:<port>
+--noreload` in the background. Kill old servers on that port first
+(`pgrep -f "[r]unserver 127.0.0.1:<port>"`). A leftover one keeps answering
+with the old template.
 
 ## Pitfalls
 
@@ -202,5 +272,14 @@ lint group).
   rows still reference the old path, so re-export from the old module until
   they drain (`data_manager/tasks.py` does this for the moved sync tasks).
 - Renaming a table header breaks its filter chips (see step 6).
+- Migrations for a page still in development: delete and regenerate them
+  instead of stacking more. A local `db.sqlite3` that already applied the old
+  versions then has records whose names no longer match, so plain `migrate`
+  either skips the new fields or re-adds existing columns. Back up the file,
+  add the missing columns and tables to match the new migrations, then fix
+  the `django_migrations` names. Django's SQLite `schema_editor.add_field`
+  can't run inside `transaction.atomic()`, and a table rebuild may trip the
+  JSONField CHECK constraint, so plain `ALTER TABLE ... ADD COLUMN` is
+  simpler. Compare `pragma table_info` against a fresh `migrate` to confirm.
 - Templates load page JS in `{% block includes %}`. `navigation.js` is
   already loaded by `base.html`, so don't load it again.
