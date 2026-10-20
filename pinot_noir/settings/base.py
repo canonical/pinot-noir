@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     # Pinot Noir web page applications
     "pinot_noir.merges_schedule",
     "pinot_noir.reviews",
+    "pinot_noir.bug_triage",
 ]
 
 MIDDLEWARE = [

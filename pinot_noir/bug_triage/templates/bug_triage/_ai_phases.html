@@ -1,0 +1,17 @@
+{% comment %}startriage's "Thought Process": what each phase did, from the host's log.{% endcomment %}
+{% if phases %}
+    <details class="u-no-margin--bottom">
+        <summary>Thought process</summary>
+        <ul class="p-list">
+            {% for phase in phases %}
+                <li class="p-list__item">
+                    <strong>{{ phase.phase }}</strong> ({{ phase.state }}){% if phase.summary %}: {{ phase.summary }}{% endif %}
+                    {% if phase.tools or phase.sessions %}
+                        <em class="u-text--muted">({% if phase.tools %}tools: {{ phase.tools }}{% endif %}{% if phase.tools and phase.sessions %}; {% endif %}{% if phase.sessions %}{{ phase.input_tokens }} in / {{ phase.output_tokens }} out tokens{% endif %})</em>
+                    {% endif %}
+                    {% if phase.feedback %}<br><span class="u-text--muted">Skill feedback:</span> {{ phase.feedback }}{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </details>
+{% endif %}

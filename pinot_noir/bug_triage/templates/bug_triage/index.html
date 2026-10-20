@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}<title>{{ title|default:'Bug Triage' }}</title>{% endblock %}
+
+{% block includes %}
+<script src="{% static 'scripts/triagenotes.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<main id="main-content" class="l-main">
+    <div class="p-panel">
+        <div class="p-panel__header">
+            <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
+            {% if report %}
+                <div class="p-panel__controls" title="The startriage markdown report with your notes, e.g. for Discourse">
+                    <button type="button" id="triage-md-copy" class="p-button u-no-margin--bottom" title="Copy the markdown report to the clipboard">
+                        <i class="p-icon--copy"></i> <span>Copy Markdown</span>
+                    </button>
+                    <button type="button" id="triage-md-save" class="p-button u-no-margin--bottom" title="Download the markdown report" data-filename="{{ report.markdown_filename|default:'triage.md' }}">
+                        <i class="p-icon--external-link"></i> <span>Save Markdown</span>
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+        <div class="p-panel__content">
+            <div class="u-fixed-width"{% if report %} data-report-id="{{ report.title }} {{ report.generated_at|date:'c' }}"{% endif %}>
+                {% if report %}{{ report.markdown|json_script:"triage-markdown" }}{% endif %}
+                {% if report.failed_sources %}
+                    <div class="p-notification--negative">
+                        <div class="p-notification__content">
+                            <p class="p-notification__message">Fetching failed: {{ report.failed_sources|join:", " }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% for section in sections %}
+                    <h4>{{ section.name }} <span class="p-badge">{{ section.items|length }}</span></h4>
+                    <ul class="p-list--divided u-sv3" aria-label="{{ section.name }} triage">
+                        {% for item in section.items %}
+                        <li class="p-list__item" id="{{ item.source }}-{{ item.key }}" data-url="{{ item.url }}" data-label="{{ item.label }}">
+                            <details class="u-no-margin--bottom">
+                                <summary>
+                                    <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer"><strong>{{ item.label }}</strong></a>
+                                    {{ item.title }}
+                                    <span class="p-chip is-inline is-dense js-triage-note-flag u-hide">note</span>
+                                </summary>
+                                <table class="u-no-margin--bottom" aria-label="{{ item.label }} details">
+                                    <colgroup><col style="width: 10rem;"><col></colgroup>
+                                    <tbody>
+                                        <tr><th>{{ section.context_label }}</th><td>{% for text, url in item.context %}{% if url %}<a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ text }}</a>{% else %}{{ text }}{% endif %} {% empty %}&mdash;{% endfor %}</td></tr>
+                                        <tr>
+                                            <th>Release</th>
+                                            <td style="font-family: 'Ubuntu Mono', monospace; font-weight: bold;">
+                                                {% for letter, state in item.releases %}<span title="{{ state }}" style="color: {% if state == 'open' %}#c7162b{% elif state == 'closed' %}#0e8420{% elif state == 'unapproved' %}#24598f{% else %}#666{% endif %};">{{ letter }}</span>{% empty %}&mdash;{% endfor %}
+                                            </td>
+                                        </tr>
+                                        <tr><th>Status</th><td>{{ item.status|default:"&mdash;" }}</td></tr>
+                                        <tr><th>Prio</th><td>{{ item.importance|default:"&mdash;" }}</td></tr>
+                                        <tr><th>Assignee</th><td>{% for text, url in item.assignees %}{% if url %}<a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ text }}</a>{% else %}{{ text }}{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}&mdash;{% endfor %}</td></tr>
+                                        <tr><th>Updated</th><td>{% if item.updated %}{{ item.updated|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</td></tr>
+                                        {% if item.refs %}<tr><th>References</th><td>{% for text, url in item.refs %}{% if url %}<a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ text }}</a>{% else %}{{ text }}{% endif %} {% endfor %}</td></tr>{% endif %}
+                                        {% if item.further %}<tr><th>Also affects</th><td>{{ item.further|join:", " }}</td></tr>{% endif %}
+                                        {% if item.chips %}
+                                        <tr>
+                                            <th>Flags</th>
+                                            <td>
+                                                {% for chip in item.chips %}
+                                                    {% if chip == "verification done" %}
+                                                        <span class="p-chip--positive is-inline is-dense">{{ chip }}</span>
+                                                    {% elif chip == "expiring" %}
+                                                        <span class="p-chip--negative is-inline is-dense">{{ chip }}</span>
+                                                    {% elif chip == "new" %}
+                                                        <span class="p-chip--information is-inline is-dense">{{ chip }}</span>
+                                                    {% else %}
+                                                        <span class="p-chip--caution is-inline is-dense">{{ chip }}</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+
+                                <label class="u-sv1" for="{{ item.source }}-{{ item.key }}-note"><strong>Notes</strong></label>
+                                <textarea id="{{ item.source }}-{{ item.key }}-note" class="js-triage-note" rows="3" placeholder="Note for the markdown export"></textarea>
+
+                                {% if item.description %}
+                                    <details class="u-sv1">
+                                        <summary><strong>Description</strong></summary>
+                                        <pre style="white-space: pre-wrap;">{{ item.description }}</pre>
+                                    </details>
+                                {% else %}
+                                    <h6>Description</h6>
+                                    <p class="u-text--muted">No description available.</p>
+                                {% endif %}
+
+                                <h6>AI analysis</h6>
+                                {% if item.ai_result %}
+                                    {% with result=item.ai_result %}
+                                        <table class="u-no-margin--bottom">
+                                            <colgroup><col style="width: 10rem;"><col></colgroup>
+                                            <tbody>
+                                                {% if item.ai_route %}<tr><th>Route</th><td>{{ item.ai_route }}</td></tr>{% endif %}
+                                                <tr><th>Suggested status</th><td>{{ result.status }}</td></tr>
+                                                {% if result.importance and result.importance != "Undecided" %}
+                                                    <tr><th>Suggested importance</th><td>{{ result.importance }}</td></tr>
+                                                {% endif %}
+                                                {% if result.series %}
+                                                    <tr>
+                                                        <th>Per series</th>
+                                                        <td>{% for name, status in result.series.items %}{{ name }}: {{ status }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                                                    </tr>
+                                                {% endif %}
+                                                <tr>
+                                                    <th>Suggested tags</th>
+                                                    <td>{% for tag in result.tags %}<span class="p-chip is-inline is-dense">{{ tag }}</span>{% empty %}<span class="u-text--muted">none</span>{% endfor %}</td>
+                                                </tr>
+                                                {% if result.duplicate_of %}
+                                                    <tr>
+                                                        <th>Duplicate of</th>
+                                                        <td><a href="https://bugs.launchpad.net/bugs/{{ result.duplicate_of|cut:"#" }}">LP: #{{ result.duplicate_of|cut:"#" }}</a></td>
+                                                    </tr>
+                                                {% endif %}
+                                            </tbody>
+                                        </table>
+                                        <p><strong>Analysis</strong></p>
+                                        {% if result.analysis %}{{ result.analysis|linebreaks }}{% else %}<p class="u-text--muted">No analysis provided.</p>{% endif %}
+                                        {% if result.suggested_comment %}
+                                            <p><strong>Suggested comment</strong></p>
+                                            <blockquote class="p-pull-quote--small"><p class="p-pull-quote__quote" style="white-space: pre-wrap;">{{ result.suggested_comment }}</p></blockquote>
+                                        {% endif %}
+                                        {% if result.proposed_fix.kind == "diff" and result.proposed_fix.value %}
+                                            <p><strong>Proposed fix</strong></p>
+                                            <pre><code>{{ result.proposed_fix.value }}</code></pre>
+                                        {% elif result.proposed_fix.kind == "reference" and result.proposed_fix.value %}
+                                            <p><strong>Proposed fix:</strong> {{ result.proposed_fix.value|urlize }}</p>
+                                        {% endif %}
+                                        {% if result.fix_applies %}
+                                            <p>Checked by the host (patches applied):</p>
+                                            <ul class="p-list">
+                                                {% for ref, state in result.fix_applies.items %}<li class="p-list__item">{{ ref|urlize }}: {{ state }}</li>{% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                        {% if result.references %}
+                                            <p><strong>References</strong></p>
+                                            <ul class="p-list">
+                                                {% for reference in result.references %}<li class="p-list__item">{{ reference|urlize }}</li>{% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                        {% if result.sru_candidates %}
+                                            <p><strong>SRU candidates</strong></p>
+                                            <ul class="p-list">
+                                                {% for candidate in result.sru_candidates %}<li class="p-list__item">{{ candidate.series }}: {{ candidate.reason }}</li>{% endfor %}
+                                            </ul>
+                                            <p class="u-text--muted"><em>SRU feasibility not assessed; at the triager's discretion.</em></p>
+                                        {% endif %}
+                                        {% if result.upstream_suggestion %}
+                                            <p><strong>Upstream</strong></p>
+                                            {{ result.upstream_suggestion|urlize|linebreaks }}
+                                        {% endif %}
+                                    {% endwith %}
+                                    {% include "bug_triage/_ai_phases.html" with phases=item.ai_phases %}
+                                {% elif item.ai_error %}
+                                    <div class="p-notification--negative">
+                                        <div class="p-notification__content">
+                                            <p class="p-notification__message">AI analysis failed: {{ item.ai_error }}</p>
+                                        </div>
+                                    </div>
+                                    {% include "bug_triage/_ai_phases.html" with phases=item.ai_phases %}
+                                {% elif item.ai_route %}
+                                    <p>Not triaged by AI{% if item.ai_note %}: {{ item.ai_note }}{% endif %}</p>
+                                    <p class="u-text--muted"><em>Precheck: {% if item.ai_phases %}{{ item.ai_phases.0.summary }}{% else %}{{ item.ai_route }}{% endif %}</em></p>
+                                {% else %}
+                                    <p class="u-text--muted">Not analysed.</p>
+                                {% endif %}
+                            </details>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% empty %}
+                    <p>Nothing to do.</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% if page_meta.last_refreshed_at %}
+            <div class="u-fixed-width">
+                <p class="u-text--muted u-align--right">
+                    Last refreshed <time datetime="{{ page_meta.last_refreshed_at|date:'c' }}" title="{{ page_meta.last_refreshed_at|date:'Y-m-d H:i:s e' }}">{{ page_meta.last_refreshed_at|timesince }} ago</time>.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
