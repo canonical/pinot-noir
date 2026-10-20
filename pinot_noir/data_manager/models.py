@@ -23,6 +23,12 @@ class UserTokens(models.Model):
     # Launchpad API credentials string
     lp_token = EncryptedTextField()
 
+    # GitHub token used by startriage (bug triage page); optional
+    github_token = EncryptedTextField(blank=True, default="")
+
+    # OpenRouter API key for startriage AI analysis; optional
+    openrouter_api_key = EncryptedTextField(blank=True, default="")
+
 
 class MergeBugPackageInfo(models.Model):
     """Information about a package for creating a merges schedule merge bug."""
