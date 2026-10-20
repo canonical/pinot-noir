@@ -68,3 +68,19 @@ class RefreshPageCommandTests(TestCase):
             stdout=open("/dev/null", "w"),
         )
         enqueue.assert_called_once_with(username="alice", release_adjective="resolute")
+
+    @patch("pinot_noir.pages.registry.Page.get_refresh_task")
+    def test_passes_triage_options(self, get_task):
+        enqueue = get_task.return_value.enqueue
+        call_command(
+            "refresh_page",
+            "bug-triage",
+            "--username",
+            "alice",
+            "--team",
+            "server",
+            "--triage-day",
+            "monday",
+            stdout=open("/dev/null", "w"),
+        )
+        enqueue.assert_called_once_with(username="alice", team="server", triage_day="monday")
