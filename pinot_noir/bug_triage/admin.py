@@ -58,8 +58,9 @@ class StartriageAISettingsAdmin(admin.ModelAdmin):
                 ),
                 "description": (
                     "AI analysis of Launchpad bugs, as 'startriage triage --ai'. "
-                    "Credentials come from the refreshing user's tokens: github_token for "
-                    "Copilot, openrouter_api_key for OpenRouter. Suggest improvements asks "
+                    "Credentials come from the refreshing user's tokens: copilot_token (a "
+                    "fine-grained token with Copilot Requests: Read) for Copilot, "
+                    "openrouter_api_key for OpenRouter. Suggest improvements asks "
                     "the model for feedback on startriage's triage skills, shown per bug."
                 ),
             },

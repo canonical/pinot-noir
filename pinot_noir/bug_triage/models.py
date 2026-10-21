@@ -78,7 +78,8 @@ class StartriageAISettings(models.Model):
     """startriage ``[ai]`` settings for ``triage --ai`` runs of the bug triage page.
 
     Only one row is used. Credentials come from the refreshing user's
-    UserTokens: github_token for Copilot, openrouter_api_key for OpenRouter.
+    UserTokens: copilot_token for Copilot, openrouter_api_key for OpenRouter.
+    Their github_token is only used for GitHub data (config general.github_token).
     """
 
     PROVIDER_COPILOT = AIProvider.copilot.value
@@ -107,12 +108,12 @@ class StartriageAISettings(models.Model):
     def __str__(self) -> str:
         return f"{self.provider}: {self.model}"
 
-    def to_ai_config(self, github_token: str = "", openrouter_api_key: str = "") -> AIConfig:
+    def to_ai_config(self, copilot_token: str = "", openrouter_api_key: str = "") -> AIConfig:
         """Return the startriage AIConfig, with the given user's credentials."""
         return AIConfig(
             provider=AIProvider(self.provider),
             model=self.model,
-            github_token=github_token or None,
+            github_token=copilot_token or None,
             openrouter_api_key=openrouter_api_key or None,
             openrouter_base_url=self.openrouter_base_url,
             tools=self.tools,

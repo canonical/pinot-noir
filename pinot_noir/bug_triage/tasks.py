@@ -260,7 +260,7 @@ def refresh_bug_triage(
     if ai and ai_settings is None:
         raise ObjectDoesNotExist("AI analysis requested, but no Startriage AI Settings exist.")
     ai_config = (
-        ai_settings.to_ai_config(tokens.github_token, tokens.openrouter_api_key)
+        ai_settings.to_ai_config(tokens.copilot_token, tokens.openrouter_api_key)
         if ai_settings is not None
         else None
     )

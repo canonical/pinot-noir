@@ -19,7 +19,13 @@ from .models import (
 
 @admin.register(UserTokens)
 class UserTokensAdmin(admin.ModelAdmin):
-    list_display = ("user", "masked_lp_token", "masked_github_token", "masked_openrouter_api_key")
+    list_display = (
+        "user",
+        "masked_lp_token",
+        "masked_github_token",
+        "masked_copilot_token",
+        "masked_openrouter_api_key",
+    )
     search_fields = ("user__username",)
     readonly_fields = ("user",)
 
@@ -32,6 +38,12 @@ class UserTokensAdmin(admin.ModelAdmin):
     @admin.display(description="github_token")
     def masked_github_token(self, obj):
         if not obj.github_token:
+            return ""
+        return "********"
+
+    @admin.display(description="copilot_token")
+    def masked_copilot_token(self, obj):
+        if not obj.copilot_token:
             return ""
         return "********"
 

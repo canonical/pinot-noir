@@ -23,8 +23,11 @@ class UserTokens(models.Model):
     # Launchpad API credentials string
     lp_token = EncryptedTextField()
 
-    # GitHub token used by startriage (bug triage page); optional
+    # GitHub token for GitHub data in startriage (bug triage page); optional
     github_token = EncryptedTextField(blank=True, default="")
+
+    # GitHub fine-grained token with "Copilot Requests" for startriage AI analysis; optional
+    copilot_token = EncryptedTextField(blank=True, default="")
 
     # OpenRouter API key for startriage AI analysis; optional
     openrouter_api_key = EncryptedTextField(blank=True, default="")

@@ -183,7 +183,9 @@ class BugTriageIndexTests(TestCase):
 class RefreshBugTriageTests(TestCase):
     def setUp(self):
         self.user = User.objects.create(username="alice")
-        UserTokens.objects.create(user=self.user, lp_token="lp", github_token="gh")
+        self.tokens = UserTokens.objects.create(
+            user=self.user, lp_token="lp", github_token="gh", copilot_token="cp"
+        )
         _team()
 
     @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
@@ -264,7 +266,8 @@ class RefreshBugTriageTests(TestCase):
         config, _opts, ai_provider = fetch_items.call_args.args
         self.assertIsNotNone(ai_provider)
         self.assertEqual(config.ai.model, "gpt-5")
-        self.assertEqual(config.ai.github_token, "gh")
+        self.assertEqual(config.ai.github_token, "cp")
+        self.assertEqual(config.general.github_token, "gh")
         self.assertEqual(config.ai.tools, {"fetch_url": True})
         self.assertTrue(config.ai.suggest_improvements)
 
@@ -283,6 +286,18 @@ class RefreshBugTriageTests(TestCase):
         with self.assertRaises(AIConfigError):
             refresh_bug_triage.call(username="alice", triage_day="tuesday")
         fetch_items.assert_not_called()
+
+    @patch("pinot_noir.bug_triage.tasks.build_provider")
+    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
+    def test_copilot_does_not_use_github_token(self, fetch_items, build_provider):
+        self.tokens.copilot_token = ""
+        self.tokens.save()
+        StartriageAISettings.objects.create(enabled=True, provider="copilot", model="gpt-5")
+        fetch_items.return_value = FetchedTriage()
+        refresh_bug_triage.call(username="alice", triage_day="tuesday")
+        config = fetch_items.call_args.args[0]
+        self.assertIsNone(config.ai.github_token)
+        self.assertEqual(config.general.github_token, "gh")
 
     def test_ai_requested_without_settings(self):
         with self.assertRaises(ObjectDoesNotExist):
