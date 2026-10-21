@@ -83,32 +83,34 @@ class StartriageTeamAdmin(admin.ModelAdmin):
                     "lp_team",
                     "lp_todo_tag",
                     "lp_freezer_tag",
-                    "lp_ignore_packages_combined",
+                    "lp_ignore_packages",
                 ),
-                "description": "Lists are comma-separated.",
             },
         ),
         (
             "Discourse",
-            {"fields": ("discourse_categories_combined", "discourse_triage_categories_combined")},
+            {"fields": ("discourse_categories", "discourse_triage_categories")},
         ),
         (
             "GitHub",
             {
                 "fields": (
                     "github_repos",
-                    "github_todo_labels_combined",
-                    "github_ignore_labels_combined",
+                    "github_todo_labels",
+                    "github_ignore_labels",
                     "github_team",
                 ),
                 "description": (
-                    'github_repos is a JSON list of "org/repo" strings or objects like '
+                    'github_repos is a list of "org/repo" strings or objects like '
                     '{"name": "org/repo", "todo_labels": ["label"]}. '
-                    "Leave the label lists blank to use startriage's defaults."
+                    "Leave the label lists empty (null) to use startriage's defaults."
                 ),
             },
         ),
-        ("Proposed migration", {"fields": ("proposed_migration_teams_combined",)}),
+        (
+            "Proposed migration",
+            {"fields": ("proposed_migration_teams",)},
+        ),
     )
 
 

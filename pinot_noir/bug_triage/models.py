@@ -4,16 +4,10 @@ from pydantic import ValidationError as PydanticValidationError
 from startriage.config import AIConfig, AIProvider, TeamConfig
 
 
-def _split(combined: str) -> list[str]:
-    """Split a comma-separated admin field into a list, dropping blanks."""
-    return [part.strip() for part in combined.split(",") if part.strip()]
-
-
 class StartriageTeam(models.Model):
     """A startriage ``[team.<name>]`` config section.
 
-    Field names follow startriage's TeamConfig; list values are stored as
-    comma-separated strings like the other Pinot Noir settings models.
+    Field names follow startriage's TeamConfig; list values are JSON lists.
     """
 
     # Team key, as passed to ``startriage -t <name>``.
@@ -25,14 +19,14 @@ class StartriageTeam(models.Model):
     lp_team = models.CharField(max_length=100)
     lp_todo_tag = models.CharField(max_length=100)
     lp_freezer_tag = models.CharField(max_length=100, blank=True)
-    lp_ignore_packages_combined = models.TextField(default="", blank=True)
+    lp_ignore_packages = models.JSONField(default=list, blank=True)
 
-    discourse_categories_combined = models.TextField(default="", blank=True)
-    discourse_triage_categories_combined = models.TextField(default="", blank=True)
+    discourse_categories = models.JSONField(default=list, blank=True)
+    discourse_triage_categories = models.JSONField(default=list, blank=True)
 
-    # Blank means unset, so startriage falls back to lp_todo_tag / no ignore labels.
-    github_todo_labels_combined = models.TextField(default="", blank=True)
-    github_ignore_labels_combined = models.TextField(default="", blank=True)
+    # Null means unset, so startriage falls back to lp_todo_tag / no ignore labels.
+    github_todo_labels = models.JSONField(null=True, blank=True)
+    github_ignore_labels = models.JSONField(null=True, blank=True)
 
     # List of "org/repo" strings or {"name": ..., "todo_labels": [...], ...} objects.
     github_repos = models.JSONField(default=list, blank=True)
@@ -40,7 +34,7 @@ class StartriageTeam(models.Model):
     # org/team-slug whose GitHub activity counts as the team's own.
     github_team = models.CharField(max_length=200, blank=True)
 
-    proposed_migration_teams_combined = models.TextField(default="", blank=True)
+    proposed_migration_teams = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = "Startriage Team"
@@ -63,14 +57,14 @@ class StartriageTeam(models.Model):
             lp_team=self.lp_team,
             lp_todo_tag=self.lp_todo_tag,
             lp_freezer_tag=self.lp_freezer_tag or None,
-            lp_ignore_packages=_split(self.lp_ignore_packages_combined),
-            discourse_categories=_split(self.discourse_categories_combined),
-            discourse_triage_categories=_split(self.discourse_triage_categories_combined),
-            github_todo_labels=_split(self.github_todo_labels_combined) or None,
-            github_ignore_labels=_split(self.github_ignore_labels_combined) or None,
+            lp_ignore_packages=self.lp_ignore_packages or [],
+            discourse_categories=self.discourse_categories or [],
+            discourse_triage_categories=self.discourse_triage_categories or [],
+            github_todo_labels=self.github_todo_labels,
+            github_ignore_labels=self.github_ignore_labels,
             github_repos=self.github_repos or [],
             github_team=self.github_team or None,
-            proposed_migration_teams=_split(self.proposed_migration_teams_combined),
+            proposed_migration_teams=self.proposed_migration_teams or [],
         )
 
     def clean(self) -> None:

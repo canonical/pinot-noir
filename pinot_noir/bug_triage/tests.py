@@ -29,17 +29,24 @@ def _team(**kwargs) -> StartriageTeam:
 class StartriageTeamTests(TestCase):
     def test_to_team_config(self):
         team = _team(
-            lp_ignore_packages_combined="lxd, juju,",
+            lp_ignore_packages=["lxd", "juju"],
+            github_ignore_labels=[],
             github_repos=["canonical/pollen", {"name": "canonical/x", "todo_labels": ["a"]}],
         )
         config = team.to_team_config()
         self.assertEqual(config.lp_ignore_packages, ["lxd", "juju"])
         self.assertIsNone(config.github_todo_labels)
+        self.assertEqual(config.github_ignore_labels, [])
         self.assertIsNone(config.lp_freezer_tag)
         self.assertEqual(
             [r.name for r in config.github_repos], ["canonical/pollen", "canonical/x"]
         )
         self.assertEqual(config.github_repos[1].todo_labels, ["a"])
+
+    def test_clean_rejects_non_list(self):
+        team = _team(lp_ignore_packages="lxd, juju")
+        with self.assertRaises(ValidationError):
+            team.clean()
 
     def test_clean_rejects_bad_repos(self):
         team = _team(github_repos=[{"bogus": 1}])
