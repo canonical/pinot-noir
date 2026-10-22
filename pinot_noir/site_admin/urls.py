@@ -9,4 +9,5 @@ urlpatterns = [
     path("tokens", views.tokens, name="tokens"),
     path("pages", views.pages, name="pages"),
     path("pages/<slug:slug>/toggle", views.toggle_page, name="toggle-page"),
+    path("team", views.team, name="team"),
 ]

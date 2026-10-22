@@ -1,0 +1,50 @@
+{% extends 'site_admin/base.html' %}
+
+{% block admin_content %}
+{% for table in tables %}
+    <section class="u-sv3" aria-labelledby="{{ table.role }}-heading">
+        <h3 class="p-heading--5" id="{{ table.role }}-heading">{{ table.title }} <span class="p-badge">{{ table.users|length }}</span></h3>
+        <p class="u-text--muted">{{ table.description }}</p>
+        <form method="post" style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+            {% csrf_token %}
+            <input type="hidden" name="role" value="{{ table.role }}">
+            {% for field in table.form %}
+                <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    <input class="p-form-validation__input" type="{% if field.name == 'email' %}email{% else %}text{% endif %}" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}"{% if field.field.required %} required{% endif %} autocomplete="off" spellcheck="false"{% if field.help_text %} title="{{ field.help_text }}"{% endif %}>
+                    {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+            <div>
+                <label aria-hidden="true" style="display: block;">&nbsp;</label>
+                <button type="submit" class="p-button--positive"><i class="p-icon--plus is-light"></i> <span>Add</span></button>
+            </div>
+        </form>
+        <table aria-labelledby="{{ table.role }}-heading">
+            <colgroup><col style="width: 4rem;"><col><col style="width: 9rem;"></colgroup>
+            <thead>
+                <tr><th><span class="u-off-screen">Avatar</span></th><th>User</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for user in table.users %}
+                    <tr>
+                        <td>{% if user.gravatar_url %}<img src="{{ user.gravatar_url }}?s=32&d=identicon" alt="" width="32" height="32" style="border-radius: 50%;">{% endif %}</td>
+                        <td><a href="https://launchpad.net/~{{ user.username }}" target="_blank" rel="noopener noreferrer">{{ user.username }}</a></td>
+                        <td class="u-align--right">
+                            <form method="post" class="u-no-margin--bottom">
+                                {% csrf_token %}
+                                <input type="hidden" name="role" value="{{ table.role }}">
+                                <input type="hidden" name="action" value="remove">
+                                <input type="hidden" name="username" value="{{ user.username }}">
+                                <button type="submit" class="p-button--negative is-dense u-no-margin--bottom" title="Remove {{ user.username }} from {{ table.title|lower }}"><i class="p-icon--delete is-light"></i> <span>Remove</span></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="u-text--muted">None yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+{% endfor %}
+{% endblock %}
