@@ -13,5 +13,6 @@ class MergesScheduleConfig(AppConfig):
         slug=PAGE_SLUG,
         label="Merge Schedule",
         refresh_task="pinot_noir.merges_schedule.tasks.refresh_merge_schedule",
+        manage_urls="pinot_noir.merges_schedule.manage_urls",
         order=10,
     )

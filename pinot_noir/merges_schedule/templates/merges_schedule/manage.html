@@ -1,0 +1,57 @@
+{% extends 'site_admin/base.html' %}
+
+{% block admin_content %}
+<section class="u-sv3" aria-labelledby="settings-heading">
+    <h3 class="p-heading--5" id="settings-heading">Settings</h3>
+    <p class="u-text--muted">Settings for merge and backport Launchpad bugs.</p>
+    {% for filter in filters %}
+        <h4 class="p-heading--6">{{ filter.heading }}</h4>
+        {% for list in filter.lists %}
+            <div class="u-sv2">
+                <p class="u-no-margin--bottom"><strong>{{ list.label }}</strong></p>
+                <p class="p-form-help-text" style="margin-top: 0;">
+                    {% if list.field == "tags" %}
+                        Bugs must include the following tags to be included.
+                    {% elif list.field == "subscribers" %}
+                        Bugs must have the following Launchpad users or teams subscribed to be included.
+                    {% endif %}
+                </p>
+                {% if list.values %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="filter-remove">
+                        <input type="hidden" name="settings_type" value="{{ filter.kind }}">
+                        <input type="hidden" name="field" value="{{ list.field }}">
+                        {% for value in list.values %}
+                            <span class="p-chip">
+                                <span class="p-chip__value">{{ value }}</span>
+                                <button type="submit" class="p-chip__dismiss" name="value" value="{{ value }}" title="Remove {{ value }}">Remove {{ value }}</button>
+                            </span>
+                        {% endfor %}
+                    </form>
+                {% else %}
+                    <p class="u-text--muted">None yet.</p>
+                {% endif %}
+                {% with field=list.form.value %}
+                    <form method="post" style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="filter-add">
+                        <input type="hidden" name="settings_type" value="{{ filter.kind }}">
+                        <input type="hidden" name="field" value="{{ list.field }}">
+                        <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                            <label class="u-off-screen" for="{{ field.id_for_label }}">{{ field.label }} to {{ filter.heading|lower }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                        </div>
+                        <div>
+                            <button type="submit" class="p-button"><i class="p-icon--plus"></i> <span>{{ field.label }}</span></button>
+                        </div>
+                    </form>
+                {% endwith %}
+            </div>
+        {% endfor %}
+    {% endfor %}
+</section>
+{% include 'site_admin/_schedule.html' %}
+{% include 'site_admin/_commands.html' %}
+{% endblock %}
