@@ -124,15 +124,14 @@ class BackportBugPackageInfoAdmin(admin.ModelAdmin):
 
 @admin.register(MergeBugFilterSettings)
 class MergeBugFilterSettingsAdmin(admin.ModelAdmin):
-    list_display = ("tags_combined", "subscribers_combined")
+    list_display = ("tags", "subscribers")
     fieldsets = (
         (
             "Bug filters",
             {
-                "fields": ("tags_combined", "subscribers_combined"),
+                "fields": ("tags", "subscribers"),
                 "description": (
-                    "Comma-separated lists of tags and subscribers "
-                    "that merge board bugs must have."
+                    "JSON lists of tags and subscribers that merge board bugs must have."
                 ),
             },
         ),
@@ -151,15 +150,14 @@ class MergeBugFilterSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(BackportBugFilterSettings)
 class BackportBugFilterSettingsAdmin(admin.ModelAdmin):
-    list_display = ("tags_combined", "subscribers_combined")
+    list_display = ("tags", "subscribers")
     fieldsets = (
         (
             "Bug filters",
             {
-                "fields": ("tags_combined", "subscribers_combined"),
+                "fields": ("tags", "subscribers"),
                 "description": (
-                    "Comma-separated lists of tags and subscribers "
-                    "that merge board backport bugs must have."
+                    "JSON lists of tags and subscribers that merge board backport bugs must have."
                 ),
             },
         ),

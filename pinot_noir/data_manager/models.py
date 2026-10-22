@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -95,8 +96,10 @@ class MergeBugFilterSettings(models.Model):
     # Whether these settings apply to merge bugs or backport bugs
     settings_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_MERGE)
 
-    tags_combined = models.CharField(max_length=600, default="")
-    subscribers_combined = models.CharField(max_length=600, default="", blank=True)
+    # Launchpad tags: collected bugs must have all of them; filed bugs get them.
+    tags = models.JSONField(default=list, blank=True)
+    # Launchpad users or teams subscribed to filed bugs.
+    subscribers = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = "Merge Bug Filter Setting"
@@ -108,15 +111,11 @@ class MergeBugFilterSettings(models.Model):
             )
         ]
 
-    @property
-    def tags(self) -> list[str]:
-        """Return the list of tags."""
-        return [tag.strip() for tag in self.tags_combined.split(",") if tag.strip()]
-
-    @property
-    def subscribers(self) -> list[str]:
-        """Return the list of subscribers."""
-        return [sub.strip() for sub in self.subscribers_combined.split(",") if sub.strip()]
+    def clean(self) -> None:
+        for name in ("tags", "subscribers"):
+            value = getattr(self, name)
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                raise ValidationError({name: "Enter a list of strings."})
 
 
 class BackportBugFilterSettingsManager(models.Manager):

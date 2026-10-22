@@ -26,8 +26,8 @@ class MergeBugSubmissionPreparationTests(TestCase):
         MergeBugFilterSettings.objects.create(
             site=site,
             settings_type=MergeBugFilterSettings.TYPE_MERGE,
-            tags_combined="server-todo",
-            subscribers_combined="ubuntu-server",
+            tags=["server-todo"],
+            subscribers=["ubuntu-server"],
         )
         UbuntuRelease.objects.create(
             adjective="resolute",
