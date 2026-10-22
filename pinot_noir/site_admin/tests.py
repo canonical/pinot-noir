@@ -1,10 +1,11 @@
 import hashlib
 
 from django.contrib.auth.models import User
+from django.contrib.sites.models import Site
 from django.test import TestCase
 from django.urls import reverse
 
-from pinot_noir.data_manager.models import UserTokens
+from pinot_noir.data_manager.models import TeamSettings, UserTokens
 from pinot_noir.launchpad.models import LPUser
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.pages.registry import get_pages
@@ -228,3 +229,51 @@ class TeamPageTests(TestCase):
     def test_unknown_role_is_ignored(self):
         self.client.post(self.url, {"role": "is_superuser", "action": "remove", "username": "x"})
         self.assertFalse(LPUser.objects.exists())
+
+
+class TeamNameTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("alice", is_staff=True))
+        self.url = reverse("site_admin:team")
+
+    def set_name(self, name):
+        data = {"action": "team-name", "settings-name": name}
+        return self.client.post(self.url, data, follow=True)
+
+    def test_header_defaults_to_pinot_noir(self):
+        response = self.client.get(reverse("merges_schedule:index"))
+        self.assertContains(
+            response, '<span class="p-navigation__logo-title">Pinot Noir</span>', 2
+        )
+
+    def test_set_name_replaces_header(self):
+        response = self.set_name("  Server Team ")
+        self.assertContains(response, "Team name set to Server Team.")
+        settings = TeamSettings.objects.get(site=Site.objects.get_current())
+        self.assertEqual(settings.name, "Server Team")
+        response = self.client.get(reverse("merges_schedule:index"))
+        self.assertContains(
+            response, '<span class="p-navigation__logo-title">Server Team</span>', 2
+        )
+        self.assertNotContains(response, 'logo-title">Pinot Noir')
+
+    def test_clearing_name_restores_default(self):
+        self.set_name("Server Team")
+        response = self.set_name("")
+        self.assertContains(response, "Team name cleared.")
+        self.assertContains(
+            response, '<span class="p-navigation__logo-title">Pinot Noir</span>', 2
+        )
+        self.assertEqual(TeamSettings.objects.count(), 1)
+
+    def test_name_form_does_not_touch_lp_users(self):
+        LPUser.objects.create(username="someone", is_team_member=True)
+        self.set_name("Server Team")
+        self.assertTrue(LPUser.objects.get(username="someone").is_team_member)
+
+    def test_settings_are_per_site(self):
+        other = Site.objects.create(domain="other.example", name="other")
+        TeamSettings.objects.create(site=other, name="Other Team")
+        self.assertEqual(TeamSettings.current().name, "")
+        with self.settings(SITE_ID=other.pk):
+            self.assertEqual(TeamSettings.current().name, "Other Team")

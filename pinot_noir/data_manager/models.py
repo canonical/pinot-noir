@@ -223,3 +223,25 @@ class WeeklyTask(models.Model):
             if candidate > after:
                 return candidate
         return None
+
+
+class TeamSettings(models.Model):
+    """Per-site settings about the team using this Pinot Noir instance."""
+
+    site = models.OneToOneField(Site, on_delete=models.CASCADE, primary_key=True)
+
+    # Shown in the sidebar header when set
+    name = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = "team settings"
+        verbose_name_plural = "team settings"
+
+    def __str__(self) -> str:
+        return self.name or f"Team settings for {self.site}"
+
+    @classmethod
+    def current(cls) -> "TeamSettings":
+        """Return the current site's team settings."""
+        site = Site.objects.get_current()
+        return cls.objects.filter(site=site).first() or cls(site=site)

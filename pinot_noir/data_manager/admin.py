@@ -12,6 +12,7 @@ from .models import (
     BackportBugPackageInfo,
     MergeBugFilterSettings,
     MergeBugPackageInfo,
+    TeamSettings,
     UserTokens,
     WeeklyTask,
 )
@@ -184,3 +185,8 @@ class WeeklyTaskAdmin(admin.ModelAdmin):
     @admin.display(description="Days")
     def active_days_display(self, obj):
         return obj.active_days_display()
+
+
+@admin.register(TeamSettings)
+class TeamSettingsAdmin(admin.ModelAdmin):
+    list_display = ("site", "name")

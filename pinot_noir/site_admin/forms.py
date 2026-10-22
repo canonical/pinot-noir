@@ -4,7 +4,7 @@ from django import forms
 from django.core.validators import RegexValidator
 from launchpadlib.credentials import Credentials
 
-from pinot_noir.data_manager.models import UserTokens
+from pinot_noir.data_manager.models import TeamSettings, UserTokens
 from pinot_noir.launchpad.models import LPUser
 
 # (field, label, help text). Help is about what each token is for and what it needs.
@@ -147,3 +147,13 @@ class ReviewMarkerForm(LPUserRoleForm):
     """Review markers are often teams and never shown with an avatar: no email."""
 
     email = None
+
+
+class TeamNameForm(forms.ModelForm):
+    class Meta:
+        model = TeamSettings
+        fields = ["name"]
+        labels = {"name": "Team name"}
+
+    def clean_name(self):
+        return self.cleaned_data["name"].strip()
