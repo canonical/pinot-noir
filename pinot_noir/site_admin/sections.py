@@ -9,13 +9,12 @@ from django.urls import reverse
 class Section:
     url_name: str
     label: str
-    icon: str
 
 
 # Add new admin subpages here; the first one is the /manage/ landing page.
 SECTIONS: tuple[Section, ...] = (
-    Section("site_admin:tokens", "My tokens", "user"),
-    Section("site_admin:pages", "Pages", "topic"),
+    Section("site_admin:tokens", "My tokens"),
+    Section("site_admin:team", "My team"),
 )
 
 
@@ -26,7 +25,6 @@ def section_entries(current_path: str) -> list[dict]:
         entries.append(
             {
                 "label": section.label,
-                "icon": section.icon,
                 "url": url,
                 "is_active": current_path == url,
             }
