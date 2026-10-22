@@ -1,7 +1,7 @@
 ---
 name: pinot-noir-page
-description: "Use when adding a new data page (sidebar entry + table backed by a Launchpad/ubq or third-party-library sync task) to the Pinot Noir Django app. Checklist: AppConfig page declaration (registry drives nav, URLs, PageMetadata, scheduling, refresh_page), model, sync/tasks split, template, tests, tox."
-version: 1.3.0
+description: "Use when adding a new data page (sidebar entry + table backed by a Launchpad/ubq or third-party-library sync task) to the Pinot Noir Django app. Checklist: AppConfig page declaration (registry drives nav, URLs, PageMetadata, scheduling, refresh_page), model, sync/tasks split, template, the page's /manage/ admin section (Settings, Schedule, Commands), tests, tox."
+version: 1.4.0
 author: Lena Voytek
 metadata:
     tags: [pinot-noir, django, pages, ubq, launchpad, vanilla-framework]
@@ -32,7 +32,9 @@ A page app owns everything specific to it:
 | `apps.py` | `PAGE_SLUG` constant + `page = Page(...)` on the AppConfig |
 | `urls.py` | `app_name = "<app label>"`, `path(PAGE_SLUG, views.index, name="index")` |
 | `templates/<app>/index.html` | Extends `base.html` |
-| `admin.py` | ModelAdmin for the rows |
+| `admin.py` | ModelAdmin for the rows (Django admin, kept as a fallback) |
+| `manage_urls.py`, `manage_views.py`, `templates/<app>/manage.html` | The page's own section of the site admin at `/manage/<slug>/` (step 8) |
+| `forms.py` | Settings forms for that section |
 | `tests.py`, `test_sync.py` | View smoke test + pure sync tests |
 
 Shared code lives elsewhere:
@@ -81,6 +83,7 @@ class SruQueueConfig(AppConfig):
         label="SRU Queue",
         icon="circle-of-friends",  # Vanilla p-icon--* name
         refresh_task="pinot_noir.sru_queue.tasks.refresh_sru_queue",
+        manage_urls="pinot_noir.sru_queue.manage_urls",  # step 8
         order=30,  # sidebar position; existing pages use 10, 20
     )
 ```
@@ -94,6 +97,8 @@ the app. The registry then provides:
 - the PageMetadata row, created on `migrate`
 - a "Refresh <label>" choice in the WeeklyTask admin, plus scheduling
 - `manage.py refresh_page <slug> --username <you>`
+- with `manage_urls` set: the page's admin section at `/manage/<slug>/`, nested
+  under Pages in the site admin side nav
 
 Import `PAGE_SLUG` from `.apps` everywhere else (views, tasks, urls). Never
 retype the string.
@@ -107,11 +112,14 @@ retype the string.
   `reviewer_user`), because not every Launchpad user has an LPUser row.
 - Put status values in class constants plus `STATUS_CHOICES`.
 - Run `uv run manage.py makemigrations <app>`.
-- Settings for the page go in a model in the app, edited in admin: one row per
-  item for lists (e.g. `StartriageTeam`), or a single-row settings model whose
-  ModelAdmin refuses adding a second row in `has_add_permission`. Store list
-  values as comma-separated `*_combined` fields like the other settings models.
-  Validate them in `clean()` against the library's own config model.
+- Settings for the page go in a model in the app, edited in the page's admin
+  section (step 8): one row per item for lists (e.g. `StartriageTeam`), or a
+  single-row settings model (per `Site` where it makes sense). Store list
+  values as `JSONField(default=list, blank=True)` lists of strings, never
+  comma-separated strings, and reject anything else in `clean()` (see
+  `MergeBugFilterSettings`). Validate against the library's own config model
+  if there is one. Converting an existing field needs a data-preserving
+  migration with a real reverse step (data_manager 0015).
 - Per-user secrets (API tokens) go on `data_manager.UserTokens` as
   `EncryptedTextField(blank=True, default="")`, with a `masked_<field>` admin
   display returning `"********"`. Never put secrets on page settings models.
@@ -230,7 +238,119 @@ Nothing to do. Declaring `refresh_task` on the Page:
 Only non-page tasks (pruning, bug submission) are listed by hand, in
 `WeeklyTask.BASE_TASK_CHOICES` and `get_schedulable_tasks()`.
 
-### 8. Admin and tests
+People schedule and run the tasks from the page's admin section (step 8).
+
+### 8. Site admin section (`/manage/<slug>/`)
+
+Every page owns a section of the Vanilla site admin (`pinot_noir/site_admin/`),
+which replaces the Django admin for day-to-day use. The section has three
+parts, in this order:
+
+1. **Settings**: the page's data collection settings.
+2. **Schedule**: when the backend refresh tasks run.
+3. **Commands**: tasks to run now.
+
+`pinot_noir/merges_schedule/` is the reference (`manage_urls.py`,
+`manage_views.py`, `forms.py`, `templates/merges_schedule/manage.html`,
+`test_manage.py`). Schedule and Commands are shared code, so a new page only
+writes its Settings.
+
+Wiring:
+
+- Set `manage_urls="pinot_noir.<app>.manage_urls"` on the `Page`. The site
+  admin mounts it at `/manage/<slug>/` under the namespace
+  `site_admin:<app label>` and adds the nav entry under Pages. Nothing in
+  `site_admin/` needs editing.
+- `manage_urls.py` needs no `app_name`, since the namespace comes from the app
+  label. Use `path("", manage_views.index, name="index")`, which reverses as
+  `site_admin:<app label>:index`.
+
+The view (`manage_views.index`):
+
+- Decorate it with `@staff_member_required` and
+  `@require_http_methods(["GET", "POST"])`.
+- Declare the commands as a module-level list of
+  `site_admin.page_tasks.Command(task, label, description)`. Include the page's
+  refresh task and any follow-up tasks (merges add bug submission). The
+  descriptions say what the task does, in plain words and without "e.g."
+  examples. Commands run as the current user and are disabled, with a link to
+  My tokens, while that user has no Launchpad token. A task on this list must
+  take `username` as a keyword and must be schedulable (in
+  `get_schedulable_tasks()`), or the Schedule form rejects it.
+- Every form posts a hidden `action`. Handle the page's own settings actions
+  first (prefix them, e.g. `filter-add`), then send every other POST to
+  `handle_task_post(request, COMMANDS)`. It returns a redirect when it handled
+  the POST, or the bound `ScheduleForm` when adding a schedule failed, which
+  you pass on to `task_sections`.
+- Redirect after every successful POST (post/redirect/get) and report the
+  result with `django.contrib.messages`. `site_admin/base.html` renders the
+  messages.
+- Render the context with `**task_sections(request, COMMANDS, PAGE_SLUG,
+  schedule_form)`, plus `title` and the settings context.
+
+The template extends `site_admin/base.html` and fills
+`{% block admin_content %}` with these parts, in order:
+
+- a `<section aria-labelledby="settings-heading">` with an
+  `<h3 class="p-heading--5">Settings</h3>`;
+- `{% include 'site_admin/_schedule.html' %}`;
+- `{% include 'site_admin/_commands.html' %}`.
+
+The Schedule and Commands sections come from the shared code and need nothing
+more from the page:
+
+- Schedule lists the page's WeeklyTask rows, with times in UTC. Rows can be
+  paused, resumed or removed, which also cancels a queued run. There is no
+  in-place edit: remove the row and add a new one. The section warns when the
+  scheduler isn't running and flags users without a Launchpad token.
+- Commands has a Run button per command, which enqueues the task as the
+  current user.
+
+Settings conventions (Lena's preferences):
+
+- **Lists:** add and remove one entry at a time, never a single
+  comma-separated box.
+  - Show each entry as a `p-chip` with a `p-chip__value`. Its
+    `p-chip__dismiss` is a submit button named `value` in a remove form.
+  - Under the chips, show an "Add <thing>" row: one input in a
+    `p-form-validation` div with `flex: 0 1 18rem`, then the button.
+  - The row form is flex with `align-items: flex-start`, so an error message
+    doesn't push the button out of line.
+  - Show "None yet." when the list is empty.
+  - The form validates one value: normalise it (strip, lowercase, drop a
+    leading `~` for LP names), check the format (`LP_NAME` from
+    `site_admin/forms.py`, a tag regex), and reject duplicates. Give each form
+    instance its own `prefix` so errors land on the right box.
+- **Rules between fields:** enforce them on both add and remove, with a clear
+  message. For example, no subscriber before there's a tag, and the last tag
+  can't be removed while subscribers remain. When a settings row ends up
+  empty, delete it if "no row" means "off".
+- **Help text:** put help text under a heading as
+  `p-form-help-text` with `style="margin-top: 0;"`. Vanilla gives it -8px to
+  tuck it under an input, so it overlaps a heading.
+- **Secrets:** never show secrets. Tokens live in My tokens and show as
+  Set/Not set.
+- **Checkboxes:** stack them with `p-checkbox` rather than
+  `p-checkbox--inline`.
+- **Example text:** no overly specific examples or "e.g." text in the UI.
+
+Tests (`test_manage.py`, see the merges one):
+
+- Log in a staff user with `force_login` and use
+  `reverse("site_admin:<app label>:index")`.
+- Cover:
+  - each settings add, remove and rejection path;
+  - running a command (with and without a Launchpad token: add a
+    `UserTokens` row with a fake `lp_token`);
+  - schedule add, pause, resume and remove (including that pausing cancels a
+    queued `DBTaskResult`);
+  - that a non-staff user is redirected.
+- Don't name a test helper `settings`: it shadows `TestCase.settings`.
+
+See also the `pdbq-pinot-noir-ubq` skill's `references/site-admin.md` for the
+rest of the site admin (My team, My tokens, Pages).
+
+### 9. Django admin and tests
 
 - Register a ModelAdmin with `list_display`, `list_filter`, `search_fields`.
 - `test_sync.py`: mapping cases, including `None` returns.
@@ -241,7 +361,7 @@ Only non-page tasks (pruning, bug submission) are listed by hand, in
   and the task test patches `get_launchpad_service_for_user` at
   `pinot_noir.<app>.tasks.get_launchpad_service_for_user`.
 
-### 9. Verify
+### 10. Verify
 
 ```
 DJANGO_SETTINGS_MODULE=pinot_noir.settings.dev uv run manage.py test
@@ -254,6 +374,9 @@ uv run manage.py refresh_page <slug> --username <you>   # with a worker running
 lint group). It runs `ruff check --fix` first and stops on errors it can't
 fix (e.g. E501 in fresh migrations), so `ruff format` never runs. Then run
 `.tox/format/bin/ruff format pinot_noir` directly.
+
+Log in at `/manage/<slug>/` and check every Settings action, including an
+invalid entry. The error must not push the button out of line.
 
 To look at the page, run `uv run manage.py runserver 127.0.0.1:<port>
 --noreload` in the background. Kill old servers on that port first
