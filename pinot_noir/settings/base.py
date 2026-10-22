@@ -59,6 +59,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "pinot_noir.pages.context_processors.nav_entries",
                 "pinot_noir.site_admin.context_processors.site_admin",
+                "pinot_noir.data_manager.context_processors.team",
             ],
         },
     },

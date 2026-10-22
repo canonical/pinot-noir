@@ -1,6 +1,24 @@
 {% extends 'site_admin/base.html' %}
 
 {% block admin_content %}
+<section class="u-sv3" aria-labelledby="team-name-heading">
+    {% with field=name_form.name %}
+    <h3 class="p-heading--5" id="team-name-heading">{{ field.label }}</h3>
+    <p class="u-text--muted">{{ field.help_text }}</p>
+    <form method="post" style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="team-name">
+        <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+            <label class="u-off-screen" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <input class="p-form-validation__input" type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" maxlength="{{ field.field.max_length }}" autocomplete="off">
+            {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+        </div>
+        <div>
+            <button type="submit" class="p-button--positive">Save</button>
+        </div>
+    </form>
+    {% endwith %}
+</section>
 {% for table in tables %}
     <section class="u-sv3" aria-labelledby="{{ table.role }}-heading">
         <h3 class="p-heading--5" id="{{ table.role }}-heading">{{ table.title }} <span class="p-badge">{{ table.users|length }}</span></h3>

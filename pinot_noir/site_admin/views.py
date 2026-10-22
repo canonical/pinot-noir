@@ -5,12 +5,12 @@ from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.views.decorators.http import require_http_methods
 
-from pinot_noir.data_manager.models import UserTokens
+from pinot_noir.data_manager.models import TeamSettings, UserTokens
 from pinot_noir.launchpad.models import LPUser
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.pages.registry import get_page, get_pages
 
-from .forms import LPUserRoleForm, ReviewMarkerForm, TokensForm
+from .forms import LPUserRoleForm, ReviewMarkerForm, TeamNameForm, TokensForm
 from .sections import SECTIONS, section_entries
 
 
@@ -115,7 +115,18 @@ LP_ROLES = {
 def team(request):
     """Team settings page."""
     forms = {role: form(prefix=prefix) for role, (prefix, _, form) in LP_ROLES.items()}
-    if request.method == "POST":
+    settings = TeamSettings.current()
+    name_form = TeamNameForm(instance=settings, prefix="settings")
+    if request.method == "POST" and request.POST.get("action") == "team-name":
+        name_form = TeamNameForm(request.POST, instance=settings, prefix="settings")
+        if name_form.is_valid():
+            name_form.save()
+            name = name_form.instance.name
+            messages.success(
+                request, f"Team name set to {name}." if name else "Team name cleared."
+            )
+            return redirect("site_admin:team")
+    elif request.method == "POST":
         role = request.POST.get("role", "")
         if role not in LP_ROLES:
             return redirect("site_admin:team")
@@ -152,5 +163,10 @@ def team(request):
     return render(
         request,
         "site_admin/team.html",
-        {"title": "My team", "tables": tables, "sections": section_entries(request.path)},
+        {
+            "title": "My team",
+            "name_form": name_form,
+            "tables": tables,
+            "sections": section_entries(request.path),
+        },
     )
