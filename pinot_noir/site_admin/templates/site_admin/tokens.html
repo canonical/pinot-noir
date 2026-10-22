@@ -1,0 +1,39 @@
+{% extends 'site_admin/base.html' %}
+
+{% block admin_content %}
+<p>Tokens for your account, used when tasks and refreshes run as you. Stored tokens are encrypted and never shown again; leave a field blank to keep the current value.</p>
+<form method="post" autocomplete="off">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="p-notification--negative">
+            <div class="p-notification__content">
+                <p class="p-notification__message">{{ form.non_field_errors|join:" " }}</p>
+            </div>
+        </div>
+    {% endif %}
+    {% for row in form.token_rows %}
+        <div class="p-form__group p-form-validation u-sv3{% if row.field.errors %} is-error{% endif %}">
+            <label class="p-form__label" for="{{ row.field.id_for_label }}">
+                {{ row.field.label }}
+                {% if row.is_set %}<span class="p-chip--positive is-inline is-dense"><span class="p-chip__value">Set</span></span>{% else %}<span class="p-chip is-inline is-dense"><span class="p-chip__value">Not set</span></span>{% endif %}
+            </label>
+            <div class="p-form__control">
+                {% if row.multiline %}
+                    <textarea class="p-form-validation__input" name="{{ row.field.html_name }}" id="{{ row.field.id_for_label }}" rows="5" autocomplete="off" spellcheck="false" style="font-family: monospace;" placeholder="{% if row.is_set %}Paste new credentials to replace them{% else %}[1]&#10;consumer_key = ...{% endif %}" aria-describedby="{{ row.field.id_for_label }}-help"></textarea>
+                {% else %}
+                    <input type="password" class="p-form-validation__input" name="{{ row.field.html_name }}" id="{{ row.field.id_for_label }}" autocomplete="off" spellcheck="false" placeholder="{% if row.is_set %}Enter a new value to replace it{% else %}Not set{% endif %}" aria-describedby="{{ row.field.id_for_label }}-help">
+                {% endif %}
+                {% for error in row.field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                <p class="p-form-help-text" id="{{ row.field.id_for_label }}-help">{{ row.field.help_text }}</p>
+                {% if row.is_set %}
+                    <label class="p-checkbox--inline">
+                        <input type="checkbox" class="p-checkbox__input" name="{{ row.clear.html_name }}" aria-labelledby="{{ row.clear.id_for_label }}-label"{% if row.clear.value %} checked{% endif %}>
+                        <span class="p-checkbox__label" id="{{ row.clear.id_for_label }}-label">Remove this token</span>
+                    </label>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    <button type="submit" class="p-button--positive">Save tokens</button>
+</form>
+{% endblock %}
