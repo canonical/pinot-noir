@@ -17,9 +17,18 @@
                 <div class="col-3 col-medium-2">
                     <nav class="p-side-navigation" aria-label="Admin sections">
                         <ul class="p-side-navigation__list">
-                            {% for section in sections %}
+                            {% for section in site_admin_sections %}
                                 <li class="p-side-navigation__item">
                                     <a class="p-side-navigation__link" href="{{ section.url }}"{% if section.is_active %} aria-current="page"{% endif %}>{{ section.label }}</a>
+                                    {% if section.children %}
+                                        <ul class="p-side-navigation__list">
+                                            {% for child in section.children %}
+                                                <li class="p-side-navigation__item">
+                                                    <a class="p-side-navigation__link" href="{{ child.url }}"{% if child.is_active %} aria-current="page"{% endif %}>{{ child.label }}</a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% endif %}
                                 </li>
                             {% endfor %}
                         </ul>

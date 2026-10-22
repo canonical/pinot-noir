@@ -1,0 +1,78 @@
+{% load tz %}
+<section class="u-sv3" aria-labelledby="schedule-heading">
+    <h3 class="p-heading--5" id="schedule-heading">Schedule</h3>
+    <p class="u-text--muted">Run these tasks automatically each week. Each run uses the Launchpad token of the user it runs as.</p>
+    {% if not scheduler_running %}
+        <div class="p-notification--caution">
+            <div class="p-notification__content">
+                <p class="p-notification__message">The weekly task scheduler isn't running, so nothing here will run. Start it with <code>manage.py start_weekly_task_scheduler</code>.</p>
+            </div>
+        </div>
+    {% endif %}
+    {% if schedule_rows %}
+        <table aria-label="Scheduled tasks">
+            <colgroup><col><col><col style="width: 7rem;"><col><col><col style="width: 15rem;"></colgroup>
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Days</th>
+                    <th>Time (UTC)</th>
+                    <th>Run as</th>
+                    <th>Next run</th>
+                    <th class="u-align--right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in schedule_rows %}
+                    <tr>
+                        <td>{{ row.label }}{% if not row.task.enabled %} <span class="p-chip is-dense is-readonly"><span class="p-chip__value">Paused</span></span>{% endif %}</td>
+                        <td>{{ row.task.active_days_display }}</td>
+                        <td>{{ row.task.time_of_day|time:"H:i" }}</td>
+                        <td>{{ row.task.user.get_username|default:"Nobody" }}{% if not row.has_token %} <span class="p-chip--negative is-dense is-readonly" title="This user has no Launchpad token, so the task will fail"><span class="p-chip__value">No Launchpad token</span></span>{% endif %}</td>
+                        <td>{% if row.task.enabled and row.task.next_run %}{{ row.task.next_run|utc|date:"D j M, H:i" }}{% elif row.task.enabled %}<span class="u-text--muted">Not queued yet</span>{% else %}<span class="u-text--muted">Paused</span>{% endif %}</td>
+                        <td class="u-align--right" style="white-space: nowrap;">
+                            <form method="post" style="display: inline-flex; gap: 0.5rem;">
+                                {% csrf_token %}
+                                <input type="hidden" name="id" value="{{ row.task.pk }}">
+                                {% if row.task.enabled %}
+                                    <button type="submit" name="action" value="schedule-pause" class="p-button is-dense u-no-margin--bottom u-no-margin--right">Pause</button>
+                                {% else %}
+                                    <button type="submit" name="action" value="schedule-resume" class="p-button is-dense u-no-margin--bottom u-no-margin--right">Resume</button>
+                                {% endif %}
+                                <button type="submit" name="action" value="schedule-remove" class="p-button--negative is-dense u-no-margin--bottom u-no-margin--right" title="Remove this schedule"><i class="p-icon--delete is-light"></i> <span>Remove</span></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nothing is scheduled.</p>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="schedule-add">
+        <div style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+            {% for field in schedule_form %}{% if field.name != "days" %}
+                <div style="flex: 0 1 {% if field.name == 'time_of_day' %}10rem{% else %}18rem{% endif %};" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                </div>
+            {% endif %}{% endfor %}
+        </div>
+        {% with field=schedule_form.days %}
+            <fieldset class="p-form-validation{% if field.errors %} is-error{% endif %}" style="border: 0; padding: 0;">
+                <legend>{{ field.label }}</legend>
+                {% for choice in field %}
+                    <label class="p-checkbox">
+                        <input type="checkbox" class="p-checkbox__input" name="{{ field.html_name }}" value="{{ choice.data.value }}" aria-labelledby="{{ choice.id_for_label }}-label"{% if choice.data.selected %} checked{% endif %}>
+                        <span class="p-checkbox__label" id="{{ choice.id_for_label }}-label">{{ choice.choice_label }}</span>
+                    </label>
+                {% endfor %}
+                {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+            </fieldset>
+        {% endwith %}
+        <button type="submit" class="p-button--positive"><i class="p-icon--plus is-light"></i> <span>Add schedule</span></button>
+    </form>
+</section>

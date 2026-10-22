@@ -1,0 +1,27 @@
+<section class="u-sv3" aria-labelledby="commands-heading">
+    <h3 class="p-heading--5" id="commands-heading">Commands</h3>
+    <p class="u-text--muted">Queue a task to run now, using your Launchpad token. A task worker has to be running to pick it up.{% if last_refreshed_at %} Last refreshed {{ last_refreshed_at|timesince }} ago.{% endif %}</p>
+    {% if not user_has_lp_token %}
+        <div class="p-notification--caution">
+            <div class="p-notification__content">
+                <p class="p-notification__message">You need a Launchpad token to run these. Add one in <a href="{% url 'site_admin:tokens' %}">My tokens</a>.</p>
+            </div>
+        </div>
+    {% endif %}
+    <ul class="p-list--divided">
+        {% for command in commands %}
+            <li class="p-list__item" style="display: flex; gap: 1.5rem; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong>{{ command.label }}</strong>
+                    <p class="u-text--muted u-no-margin--bottom">{{ command.description }}</p>
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="run">
+                    <input type="hidden" name="task" value="{{ command.name }}">
+                    <button type="submit" class="p-button u-no-margin--bottom"{% if not user_has_lp_token %} disabled{% endif %}>Run now</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+</section>

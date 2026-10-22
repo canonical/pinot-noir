@@ -11,7 +11,7 @@ from pinot_noir.pages.models import PageMetadata
 from pinot_noir.pages.registry import get_page, get_pages
 
 from .forms import LPUserRoleForm, ReviewMarkerForm, TeamNameForm, TokensForm
-from .sections import SECTIONS, section_entries
+from .sections import SECTIONS
 
 
 @staff_member_required
@@ -39,7 +39,6 @@ def tokens(request):
         {
             "title": "My tokens",
             "form": form,
-            "sections": section_entries(request.path),
         },
     )
 
@@ -84,7 +83,7 @@ def pages(request):
     return render(
         request,
         "site_admin/pages.html",
-        {"title": "Pages", "rows": rows, "sections": section_entries(request.path)},
+        {"title": "Pages", "rows": rows},
     )
 
 
@@ -167,6 +166,5 @@ def team(request):
             "title": "My team",
             "name_form": name_form,
             "tables": tables,
-            "sections": section_entries(request.path),
         },
     )

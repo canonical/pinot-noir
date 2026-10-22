@@ -18,16 +18,20 @@ class Page:
 
     ``slug`` is the PageMetadata key and the URL path. ``refresh_task`` is the
     dotted path to the page's ``@task`` that refreshes its data (imported
-    lazily, since AppConfigs load before models). ``app_name`` and
-    ``url_name`` are filled in by :func:`get_pages` from the AppConfig.
+    lazily, since AppConfigs load before models). ``manage_urls`` is the dotted
+    path to the page's own site admin URLconf, mounted at ``/manage/<slug>/``
+    under the ``site_admin:<app label>`` namespace. ``app_name``, ``app_label``
+    and ``url_name`` are filled in by :func:`get_pages` from the AppConfig.
     """
 
     slug: str
     label: str
     icon: str = "circle-of-friends"
     refresh_task: str | None = None
+    manage_urls: str | None = None
     order: int = 100
     app_name: str = ""
+    app_label: str = ""
     url_name: str = ""
 
     def get_refresh_task(self):
@@ -44,7 +48,14 @@ def get_pages() -> list[Page]:
     for config in apps.get_app_configs():
         page = getattr(config, "page", None)
         if isinstance(page, Page):
-            pages.append(replace(page, app_name=config.name, url_name=f"{config.label}:index"))
+            pages.append(
+                replace(
+                    page,
+                    app_name=config.name,
+                    app_label=config.label,
+                    url_name=f"{config.label}:index",
+                )
+            )
     return sorted(pages, key=lambda p: (p.order, p.label))
 
 
