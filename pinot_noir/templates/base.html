@@ -55,12 +55,12 @@
                             <div class="p-side-navigation--icons" id="drawer-icons">
                                 <nav aria-label="Main">
                                     {% for entry in nav_entries %}
-                                        <li class="p-side-navigation__item">
+                                        <li class="p-side-navigation__item" data-page-slug="{{ entry.slug }}">
                                             <a class="p-side-navigation__link{% if entry.is_active %} is-active{% endif %}" href="{{ entry.url }}"><i class="p-icon--{{ entry.icon }} is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">{{ entry.label }}</span></a>
                                         </li>
                                     {% endfor %}
                                     {% if site_admin_nav %}
-                                        <li class="p-side-navigation__item">
+                                        <li class="p-side-navigation__item" data-site-admin-nav>
                                             <a class="p-side-navigation__link{% if site_admin_nav.is_active %} is-active{% endif %}" href="{{ site_admin_nav.url }}"><i class="p-icon--user is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Admin</span></a>
                                         </li>
                                     {% endif %}

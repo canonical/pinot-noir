@@ -3,6 +3,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from pinot_noir.data_manager.models import UserTokens
+from pinot_noir.pages.models import PageMetadata
+from pinot_noir.pages.registry import get_pages
 
 LP = (
     "[1]\nconsumer_key = pinot-noir\nconsumer_secret = \n"
@@ -85,3 +87,70 @@ class TokensPageTests(TestCase):
         self.assertNotContains(
             self.client.get(reverse("merges_schedule:index")), f'href="{manage}"'
         )
+
+
+class PagesSectionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("alice", is_staff=True)
+        self.client.force_login(self.user)
+        self.url = reverse("site_admin:pages")
+
+    def test_requires_staff(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+
+    def test_lists_registered_pages(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        for page in get_pages():
+            self.assertContains(response, f'value="{page.slug}"')
+
+    def test_disable_and_enable(self):
+        keep = {p.slug for p in get_pages()} - {"reviews"}
+        response = self.client.post(self.url, {"enabled": sorted(keep)}, follow=True)
+        self.assertContains(response, "Reviews disabled.")
+        self.assertFalse(PageMetadata.objects.get(slug="reviews").enabled)
+        self.assertNotContains(
+            self.client.get(reverse("merges_schedule:index")), 'href="/reviews"'
+        )
+
+        response = self.client.post(self.url, {"enabled": sorted(keep | {"reviews"})}, follow=True)
+        self.assertContains(response, "Reviews enabled.")
+        self.assertTrue(PageMetadata.objects.get(slug="reviews").enabled)
+
+    def test_no_change(self):
+        response = self.client.post(
+            self.url, {"enabled": [p.slug for p in get_pages()]}, follow=True
+        )
+        self.assertContains(response, "No pages changed.")
+
+
+class TogglePageTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_user("alice", is_staff=True))
+
+    def toggle(self, slug, enabled):
+        url = reverse("site_admin:toggle-page", args=[slug])
+        return self.client.post(url, {"enabled": "true" if enabled else "false"})
+
+    def test_toggles_one_page(self):
+        response = self.toggle("reviews", False)
+        self.assertEqual(response.json(), {"slug": "reviews", "enabled": False})
+        self.assertFalse(PageMetadata.objects.get(slug="reviews").enabled)
+        self.assertTrue(PageMetadata.objects.get(slug="bug-triage").enabled)
+        self.assertEqual(self.toggle("reviews", True).json()["enabled"], True)
+
+    def test_unknown_page_and_get(self):
+        self.assertEqual(self.toggle("nope", False).status_code, 404)
+        url = reverse("site_admin:toggle-page", args=["reviews"])
+        self.assertEqual(self.client.get(url).status_code, 405)
+
+    def test_requires_staff(self):
+        self.client.logout()
+        self.assertEqual(self.toggle("reviews", False).status_code, 302)
+        self.assertTrue(PageMetadata.objects.get(slug="reviews").enabled)
+
+    def test_nav_items_carry_slugs(self):
+        response = self.client.get(reverse("site_admin:pages"))
+        self.assertContains(response, 'data-page-slug="reviews"')
+        self.assertContains(response, "data-site-admin-nav")

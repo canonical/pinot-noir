@@ -13,7 +13,10 @@ class Section:
 
 
 # Add new admin subpages here; the first one is the /manage/ landing page.
-SECTIONS: tuple[Section, ...] = (Section("site_admin:tokens", "My tokens", "user"),)
+SECTIONS: tuple[Section, ...] = (
+    Section("site_admin:tokens", "My tokens", "user"),
+    Section("site_admin:pages", "Pages", "topic"),
+)
 
 
 def section_entries(current_path: str) -> list[dict]:

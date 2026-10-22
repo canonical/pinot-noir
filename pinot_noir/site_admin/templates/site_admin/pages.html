@@ -1,0 +1,45 @@
+{% extends 'site_admin/base.html' %}
+
+{% load static %}
+
+{% block admin_content %}
+<p>Active pages on the Pinot Noir frontend.</p>
+<form method="post" id="pages-form">
+    {% csrf_token %}
+    <table aria-label="Pages">
+        <thead>
+            <tr>
+                <th>Page</th>
+                <th>Address</th>
+                <th>Last refreshed</th>
+                <th>Active</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr data-slug="{{ row.page.slug }}" data-label="{{ row.page.label }}" data-icon="{{ row.page.icon }}" data-url="{{ row.url }}" data-toggle-url="{% url 'site_admin:toggle-page' row.page.slug %}">
+                    <td><i class="p-icon--{{ row.page.icon }}"></i> {{ row.page.label }}</td>
+                    <td>{% if row.url %}<a href="{{ row.url }}">{{ row.url }}</a>{% else %}<span class="u-text--muted">none</span>{% endif %}</td>
+                    <td>{% if row.last_refreshed_at %}<time datetime="{{ row.last_refreshed_at|date:'c' }}" title="{{ row.last_refreshed_at|date:'Y-m-d H:i T' }}">{{ row.last_refreshed_at|timesince }} ago</time>{% else %}<span class="u-text--muted">Never</span>{% endif %}</td>
+                    <td>
+                        <label class="p-switch u-no-margin--bottom">
+                            <input type="checkbox" class="p-switch__input" name="enabled" value="{{ row.page.slug }}" role="switch"{% if row.enabled %} checked{% endif %}>
+                            <span class="p-switch__slider"></span>
+                            <span class="p-switch__label u-off-screen">Show {{ row.page.label }}</span>
+                        </label>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4">No pages are installed.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <noscript><button type="submit" class="p-button--positive">Save pages</button></noscript>
+</form>
+<div class="p-notification--negative u-hide" id="pages-error" role="alert">
+    <div class="p-notification__content">
+        <p class="p-notification__message"></p>
+    </div>
+</div>
+<script src="{% static 'scripts/sitepages.js' %}"></script>
+{% endblock %}
