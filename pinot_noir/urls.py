@@ -16,7 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from django.views.generic import RedirectView
 
 from pinot_noir.launchpad import views as launchpad_views
@@ -24,6 +24,7 @@ from pinot_noir.pages.urls import page_urlpatterns
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("manage/", include("pinot_noir.site_admin.urls")),
     path(
         "",
         RedirectView.as_view(pattern_name="merges_schedule:index", permanent=False),

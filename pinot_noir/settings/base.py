@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "pinot_noir.merges_schedule",
     "pinot_noir.reviews",
     "pinot_noir.bug_triage",
+    "pinot_noir.site_admin",
 ]
 
 MIDDLEWARE = [
@@ -57,6 +58,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "pinot_noir.pages.context_processors.nav_entries",
+                "pinot_noir.site_admin.context_processors.site_admin",
             ],
         },
     },
