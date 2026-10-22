@@ -34,9 +34,6 @@ class TokensPageTests(TestCase):
         self.client.login(username="bob", password="pw")
         self.assertEqual(self.client.get(self.url).status_code, 302)
 
-    def test_index_redirects_to_tokens(self):
-        self.assertRedirects(self.client.get(reverse("site_admin:index")), self.url)
-
     def test_never_renders_stored_tokens(self):
         UserTokens.objects.create(user=self.user, lp_token=LP, github_token="secret-gh")
         response = self.client.get(self.url)
@@ -164,6 +161,9 @@ class TeamPageTests(TestCase):
     def setUp(self):
         self.client.force_login(User.objects.create_user("alice", is_staff=True))
         self.url = reverse("site_admin:team")
+
+    def test_index_redirects_to_team(self):
+        self.assertRedirects(self.client.get(reverse("site_admin:index")), self.url)
 
     def add(self, role, prefix, username, email=""):
         data = {"role": role, f"{prefix}-username": username, f"{prefix}-email": email}

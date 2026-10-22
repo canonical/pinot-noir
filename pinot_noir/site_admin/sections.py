@@ -13,8 +13,8 @@ class Section:
 
 # Add new admin subpages here; the first one is the /manage/ landing page.
 SECTIONS: tuple[Section, ...] = (
-    Section("site_admin:tokens", "My tokens"),
     Section("site_admin:team", "My team"),
+    Section("site_admin:tokens", "My tokens"),
     Section("site_admin:pages", "Pages"),
 )
 
