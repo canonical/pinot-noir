@@ -177,15 +177,15 @@ class TeamPageTests(TestCase):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 302)
 
-    def test_two_tables(self):
+    def test_lists_team_members_only(self):
         LPUser.objects.create(username="lvoytek", is_team_member=True)
         LPUser.objects.create(username="ubuntu-server", is_review_marker=True)
         LPUser.objects.create(username="someone")
         response = self.client.get(self.url)
-        team, markers = response.context["tables"]
+        (team,) = response.context["tables"]
         self.assertEqual([u.username for u in team["users"]], ["lvoytek"])
-        self.assertEqual([u.username for u in markers["users"]], ["ubuntu-server"])
-        self.assertNotContains(response, "~someone")
+        self.assertNotContains(response, "ubuntu-server")
+        self.assertNotContains(response, 'name="marker-username"')
 
     def test_add_team_member_with_email(self):
         response = self.add("is_team_member", "team", "~LVoytek", "Lena@Example.com")
@@ -195,14 +195,14 @@ class TeamPageTests(TestCase):
         self.assertFalse(user.is_review_marker)
         self.assertEqual(user.email_md5, hashlib.md5(b"lena@example.com").hexdigest())
 
-    def test_add_existing_user_keeps_other_role(self):
-        LPUser.objects.create(username="lvoytek", is_team_member=True, email_md5="x" * 32)
-        self.add("is_review_marker", "marker", "lvoytek")
-        user = LPUser.objects.get(username="lvoytek")
-        self.assertTrue(user.is_team_member and user.is_review_marker)
-        self.assertEqual(user.email_md5, "x" * 32)
-        response = self.add("is_review_marker", "marker", "lvoytek")
-        self.assertContains(response, "already in review markers")
+    def test_invalid_username_shows_error(self):
+        response = self.add("is_team_member", "team", "not a name")
+        self.assertContains(response, "Enter a Launchpad user name")
+        self.assertFalse(LPUser.objects.exists())
+
+    def test_review_marker_posts_are_ignored_here(self):
+        self.add("is_review_marker", "marker", "some-team")
+        self.assertFalse(LPUser.objects.exists())
 
     def test_remove_clears_only_that_role(self):
         LPUser.objects.create(username="lvoytek", is_team_member=True, is_review_marker=True)
@@ -211,20 +211,6 @@ class TeamPageTests(TestCase):
         user = LPUser.objects.get(username="lvoytek")
         self.assertFalse(user.is_team_member)
         self.assertTrue(user.is_review_marker)
-
-    def test_review_markers_have_no_email(self):
-        response = self.client.get(self.url)
-        self.assertContains(response, 'name="team-email"')
-        self.assertNotContains(response, 'name="marker-email"')
-        self.add("is_review_marker", "marker", "some-team", "ignored@example.com")
-        self.assertIsNone(LPUser.objects.get(username="some-team").email_md5)
-
-    def test_invalid_username_shows_error_in_its_table(self):
-        response = self.add("is_review_marker", "marker", "not a name")
-        self.assertContains(response, "Enter a Launchpad user name")
-        self.assertTrue(response.context["tables"][1]["form"].errors)
-        self.assertFalse(response.context["tables"][0]["form"].is_bound)
-        self.assertFalse(LPUser.objects.exists())
 
     def test_unknown_role_is_ignored(self):
         self.client.post(self.url, {"role": "is_superuser", "action": "remove", "username": "x"})

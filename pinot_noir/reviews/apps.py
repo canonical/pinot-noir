@@ -13,5 +13,6 @@ class ReviewsConfig(AppConfig):
         slug=PAGE_SLUG,
         label="Reviews",
         refresh_task="pinot_noir.reviews.tasks.refresh_reviews",
+        manage_urls="pinot_noir.reviews.manage_urls",
         order=20,
     )

@@ -1,0 +1,13 @@
+{% extends 'site_admin/base.html' %}
+
+{% block admin_content %}
+<section class="u-sv3" aria-labelledby="settings-heading">
+    <h3 class="p-heading--5" id="settings-heading">Settings</h3>
+    <p class="u-text--muted">Which Launchpad merge proposals are collected for review.</p>
+    {% for table in tables %}
+        {% include 'site_admin/_lp_role_table.html' with heading_tag="h4" heading_class="p-heading--6" %}
+    {% endfor %}
+</section>
+{% include 'site_admin/_schedule.html' %}
+{% include 'site_admin/_commands.html' %}
+{% endblock %}

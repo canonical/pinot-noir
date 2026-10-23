@@ -56,7 +56,10 @@ class ManagePageTests(TestCase):
         pages = next(s for s in response.context["site_admin_sections"] if s["label"] == "Pages")
         self.assertEqual(
             pages["children"],
-            [{"label": "Merge Schedule", "url": self.url, "is_active": True}],
+            [
+                {"label": "Merge Schedule", "url": self.url, "is_active": True},
+                {"label": "Reviews", "url": "/manage/reviews/", "is_active": False},
+            ],
         )
         self.assertFalse(pages["is_active"])
 

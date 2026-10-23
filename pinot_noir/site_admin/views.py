@@ -1,16 +1,16 @@
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import Http404, HttpRequest, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.views.decorators.http import require_http_methods
 
 from pinot_noir.data_manager.models import TeamSettings, UserTokens
-from pinot_noir.launchpad.models import LPUser
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.pages.registry import get_page, get_pages
 
-from .forms import LPUserRoleForm, ReviewMarkerForm, TeamNameForm, TokensForm
+from .forms import TeamNameForm, TokensForm
+from .lp_roles import TEAM_MEMBER, handle_role_post, role_tables
 from .sections import SECTIONS
 
 
@@ -102,20 +102,13 @@ def toggle_page(request: HttpRequest, slug: str) -> JsonResponse:
     return JsonResponse({"slug": slug, "enabled": meta.enabled})
 
 
-# role field -> (form prefix, what the table is called in messages, add form)
-LP_ROLES = {
-    "is_team_member": ("team", "team members", LPUserRoleForm),
-    "is_review_marker": ("marker", "review markers", ReviewMarkerForm),
-}
-
-
 @staff_member_required
 @require_http_methods(["GET", "POST"])
 def team(request):
     """Team settings page."""
-    forms = {role: form(prefix=prefix) for role, (prefix, _, form) in LP_ROLES.items()}
     settings = TeamSettings.current()
     name_form = TeamNameForm(instance=settings, prefix="settings")
+    bound = None
     if request.method == "POST" and request.POST.get("action") == "team-name":
         name_form = TeamNameForm(request.POST, instance=settings, prefix="settings")
         if name_form.is_valid():
@@ -126,39 +119,14 @@ def team(request):
             )
             return redirect("site_admin:team")
     elif request.method == "POST":
-        role = request.POST.get("role", "")
-        if role not in LP_ROLES:
+        result = handle_role_post(request, [TEAM_MEMBER])
+        if isinstance(result, HttpResponse):
+            return result
+        if result is None:
             return redirect("site_admin:team")
-        prefix, table, form_class = LP_ROLES[role]
-        if request.POST.get("action") == "remove":
-            username = request.POST.get("username", "")
-            if LPUser.objects.filter(username=username).update(**{role: False}):
-                messages.success(request, f"Removed {username} from {table}.")
-            return redirect("site_admin:team")
-        form = form_class(request.POST, prefix=prefix)
-        if form.is_valid():
-            user, already = form.save(role)
-            if already:
-                messages.info(request, f"{user.username} is already in {table}.")
-            else:
-                messages.success(request, f"Added {user.username} to {table}.")
-            return redirect("site_admin:team")
-        forms[role] = form
+        bound = result
 
-    tables = [
-        {
-            "role": role,
-            "title": table.capitalize(),
-            "form": forms[role],
-            "users": LPUser.objects.filter(**{role: True}).order_by("username"),
-        }
-        for role, (_prefix, table, _form) in LP_ROLES.items()
-    ]
-    tables[0]["description"] = "Launchpad users on the team."
-    tables[1]["description"] = (
-        "Launchpad usernames for users or teams that, when assigned to a Launchpad merge "
-        "proposal, mark it to be added on the Reviews page."
-    )
+    tables = role_tables([TEAM_MEMBER], bound)
     return render(
         request,
         "site_admin/team.html",
