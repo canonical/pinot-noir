@@ -59,6 +59,7 @@ class ManagePageTests(TestCase):
             [
                 {"label": "Merge Schedule", "url": self.url, "is_active": True},
                 {"label": "Reviews", "url": "/manage/reviews/", "is_active": False},
+                {"label": "Bug Triage", "url": "/manage/bug-triage/", "is_active": False},
             ],
         )
         self.assertFalse(pages["is_active"])

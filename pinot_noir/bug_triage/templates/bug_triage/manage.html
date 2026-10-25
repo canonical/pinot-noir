@@ -1,0 +1,107 @@
+{% extends 'site_admin/base.html' %}
+
+{% block admin_content %}
+<section class="u-sv3" aria-labelledby="settings-heading">
+    <h3 class="p-heading--5" id="settings-heading">Settings</h3>
+    <p class="u-text--muted">What startriage collects for the triage report, and how it analyses bugs.</p>
+
+    <h4 class="p-heading--6" id="team-heading">Default team</h4>
+    <p class="p-form-help-text" style="margin-top: 0;">The startriage team the refresh triages.{% if other_teams %} {{ other_teams }} other team{{ other_teams|pluralize }} can be edited in the Django admin.{% endif %}</p>
+    <form method="post" class="u-sv2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="team-settings">
+        {% for error in team_form.non_field_errors %}<div class="p-notification--negative"><div class="p-notification__content"><p class="p-notification__message">{{ error }}</p></div></div>{% endfor %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+            {% for field in team_form %}
+                <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                    {% if field.help_text %}<p class="p-form-help-text">{{ field.help_text }}</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="p-button--positive">{% if team %}Save{% else %}Create team{% endif %}</button>
+    </form>
+
+    {% if team %}
+        {% for list in team_lists %}
+            <div class="u-sv2">
+                <p class="u-no-margin--bottom"><strong>{{ list.spec.label }}</strong></p>
+                <p class="p-form-help-text" style="margin-top: 0;">{{ list.spec.help_text }}</p>
+                {% if list.values %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="team-remove">
+                        <input type="hidden" name="field" value="{{ list.spec.field }}">
+                        {% for entry in list.values %}
+                            <span class="p-chip"{% if entry.custom %} title="Has its own label settings"{% endif %}>
+                                <span class="p-chip__value">{{ entry.name }}{% if entry.custom %} *{% endif %}</span>
+                                <button type="submit" class="p-chip__dismiss" name="value" value="{{ entry.name }}" title="Remove {{ entry.name }}">Remove {{ entry.name }}</button>
+                            </span>
+                        {% endfor %}
+                    </form>
+                    {% if list.has_custom %}<p class="p-form-help-text">* Has its own label settings, which are edited in the Django admin.</p>{% endif %}
+                {% else %}
+                    <p class="u-text--muted">None yet.</p>
+                {% endif %}
+                {% with field=list.form.value %}
+                    <form method="post" style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="team-add">
+                        <input type="hidden" name="field" value="{{ list.spec.field }}">
+                        <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                            <label class="u-off-screen" for="{{ field.id_for_label }}">{{ field.label }} to {{ list.spec.label|lower }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                        </div>
+                        <div>
+                            <button type="submit" class="p-button"><i class="p-icon--plus"></i> <span>{{ field.label }}</span></button>
+                        </div>
+                    </form>
+                {% endwith %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <h4 class="p-heading--6" id="ai-heading">AI analysis</h4>
+    <p class="p-form-help-text" style="margin-top: 0;">AI analysis of Launchpad bugs, as startriage triage --ai. It uses the refreshing user's tokens from My tokens: the Copilot token for GitHub Copilot, the OpenRouter API key for OpenRouter.</p>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="ai-settings">
+        {% for field in ai_form %}{% if field.name == "enabled" or field.name == "suggest_improvements" %}
+            <label class="p-checkbox">
+                <input type="checkbox" class="p-checkbox__input" name="{{ field.html_name }}" id="{{ field.id_for_label }}" aria-labelledby="{{ field.id_for_label }}-label"{% if field.value %} checked{% endif %}>
+                <span class="p-checkbox__label" id="{{ field.id_for_label }}-label">{{ field.label }}</span>
+            </label>
+            <p class="p-form-help-text">{{ field.help_text }}</p>
+        {% endif %}{% endfor %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+            {% for field in ai_form %}{% if field.name == "provider" or field.name == "model" or field.name == "openrouter_base_url" %}
+                <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                    {% if field.help_text %}<p class="p-form-help-text">{{ field.help_text }}</p>{% endif %}
+                </div>
+            {% endif %}{% endfor %}
+        </div>
+        {% with field=ai_form.agent_tools %}
+            <fieldset class="p-form-validation{% if field.errors %} is-error{% endif %}" style="border: 0; padding: 0;">
+                <legend>{{ field.label }}</legend>
+                <p class="p-form-help-text" style="margin-top: 0;">{{ field.help_text }}</p>
+                {% for choice in field %}
+                    <label class="p-checkbox">
+                        <input type="checkbox" class="p-checkbox__input" name="{{ field.html_name }}" value="{{ choice.data.value }}" aria-labelledby="{{ choice.id_for_label }}-label"{% if choice.data.selected %} checked{% endif %}>
+                        <span class="p-checkbox__label" id="{{ choice.id_for_label }}-label">{{ choice.choice_label }}</span>
+                    </label>
+                {% endfor %}
+                {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+            </fieldset>
+        {% endwith %}
+        <button type="submit" class="p-button--positive">Save</button>
+    </form>
+</section>
+{% include 'site_admin/_schedule.html' %}
+{% include 'site_admin/_commands.html' %}
+{% endblock %}

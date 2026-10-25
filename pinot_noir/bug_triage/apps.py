@@ -14,5 +14,6 @@ class BugTriageConfig(AppConfig):
         label="Bug Triage",
         icon="circle-of-friends",
         refresh_task="pinot_noir.bug_triage.tasks.refresh_bug_triage",
+        manage_urls="pinot_noir.bug_triage.manage_urls",
         order=30,
     )
