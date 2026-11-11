@@ -1,10 +1,10 @@
 // Notes and markdown export for the bug triage page.
 //
 // Ported from startriage's html report (startriage/data/report.html): notes
-// are kept in localStorage per report for 31 days. The export is the full
-// markdown of 'startriage triage --markdown FILE [--ai]' (headings, every item,
-// the appended AI report), with each note below its item's block. Noted items
-// missing from the markdown are listed after the triage part.
+// are kept in localStorage per report for 31 days. The export holds only the
+// noted items: the report title, the section headings above them, and each
+// item's heading line with its note below. Item details and the AI report are
+// left out; noted items missing from the markdown are listed at the end.
 //
 // Markup: a container with data-report-id, the markdown template in a
 // json_script element with id "triage-markdown", items with data-url and
@@ -39,7 +39,9 @@
     }
   }
 
-  // The whole markdown, with each note at the end of its item's block.
+  // Only the noted items: the title, the headings of the sections holding a
+  // noted item and each noted item's heading line followed by its note. Item
+  // bodies and the AI report (after startriage's "---" separator) are left out.
   function markdown(template, items, notes) {
     var pending = {}; // url link -> note
     var labels = {};
@@ -51,38 +53,44 @@
       labels[link] = item.dataset.label;
     });
 
-    // blocks: a heading line and the lines up to the next heading
-    var blocks = [];
-    template.split("\n").forEach(function (line) {
-      if (/^#+ /.test(line) || !blocks.length) blocks.push([]);
-      blocks[blocks.length - 1].push(line);
+    // headings up to the AI report, with their level (0: lines before any heading)
+    var headings = [];
+    var lines = template.split("\n");
+    var rule = lines.indexOf("---");
+    if (rule >= 0) lines = lines.slice(0, rule);
+    lines.forEach(function (line) {
+      var match = /^(#+) /.exec(line);
+      if (match) headings.push({ level: match[1].length, line: line });
     });
 
     var out = [];
-    var aiStart = -1; // where startriage's "---" separator before the AI report is
-    blocks.forEach(function (lines) {
-      var rule = aiStart < 0 ? lines.indexOf("---") : -1;
-      if (rule >= 0) aiStart = out.length + rule;
-      var link = Object.keys(pending).find(function (l) {
-        return lines[0].includes(l);
-      });
-      if (link === undefined) {
-        out = out.concat(lines);
+    var sections = []; // enclosing section headings not yet written
+    headings.forEach(function (heading, index) {
+      if (index === 0 && heading.level === 1) {
+        out.push(heading.line, ""); // the title
         return;
       }
-      out = out.concat(lines.join("\n").trimEnd().split("\n"), "", pending[link], "");
+      var link = Object.keys(pending).find(function (l) {
+        return heading.line.includes(l);
+      });
+      if (link === undefined && heading.level < 4) {
+        while (sections.length && sections[sections.length - 1].level >= heading.level) sections.pop();
+        sections.push(heading);
+        return;
+      }
+      if (link === undefined) return;
+      sections.forEach(function (section) {
+        out.push(section.line, "");
+      });
+      sections = [];
+      out.push(heading.line, "", pending[link], "");
       delete pending[link];
     });
 
-    // items with notes the markdown doesn't have, before the AI report
-    var extra = [];
+    // noted items the markdown doesn't have
     Object.keys(pending).forEach(function (link) {
-      extra.push("", "#### [" + labels[link] + link, "", pending[link], "");
+      out.push("", "#### [" + labels[link] + link, "", pending[link], "");
     });
-    if (extra.length) {
-      var at = aiStart < 0 ? out.length : aiStart;
-      out = out.slice(0, at).concat(extra, [""], out.slice(at));
-    }
     return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
   }
 
