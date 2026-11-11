@@ -31,6 +31,11 @@ class FrontendAuthenticationTests(TestCase):
         self.assertNotContains(response, f'href="{self.login_url}"')
         self.assertContains(response, f'action="{reverse("logout")}"')
         self.assertContains(response, "Log out")
+        content = response.content.decode()
+        main_nav = content.split('<nav aria-label="Main">', 1)[1].split("</nav>", 1)[0]
+        account_nav = content.split('<nav aria-label="Account"', 1)[1].split("</nav>", 1)[0]
+        self.assertNotIn("data-site-admin-nav", main_nav)
+        self.assertIn("data-site-admin-nav", account_nav)
 
     def test_login_returns_to_requested_admin_page(self):
         response = self.client.post(
