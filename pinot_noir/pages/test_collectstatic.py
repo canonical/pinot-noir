@@ -66,6 +66,6 @@ class CollectStaticTests(SimpleTestCase):
                 hashed_css = manifest["paths"][VANILLA_CSS]
                 self.assertNotEqual(hashed_css, VANILLA_CSS)
                 self.assertEqual((static_root_path / hashed_css).read_bytes(), collected_css)
-                self.assertEqual(vanilla_css(None)["vanilla_css_url"], f"/static/{hashed_css}")
+                self.assertEqual(vanilla_css(None)["vanilla_css_url"], f"/static/{VANILLA_CSS}")
 
         urlopen.assert_called_once_with(VANILLA_URL, timeout=60)

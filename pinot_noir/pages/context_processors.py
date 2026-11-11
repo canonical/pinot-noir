@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 from django.conf import settings
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.urls import NoReverseMatch, reverse
@@ -13,7 +15,9 @@ def vanilla_css(request):
         return {"vanilla_css_url": VANILLA_URL}
     try:
         if staticfiles_storage.exists(VANILLA_CSS):
-            url = staticfiles_storage.url(VANILLA_CSS)
+            # Manifest URL rewriting corrupts fragment references in Vanilla's SVG data URIs.
+            # The versioned filename already provides cache busting.
+            url = urljoin(urljoin("/", settings.STATIC_URL), VANILLA_CSS)
         else:
             url = VANILLA_URL
     except (OSError, ValueError):
