@@ -14,12 +14,12 @@ from .lp_roles import TEAM_MEMBER, handle_role_post, role_tables
 from .sections import SECTIONS
 
 
-@staff_member_required
+@staff_member_required(login_url="login")
 def index(request):
     return redirect(SECTIONS[0].url_name)
 
 
-@staff_member_required
+@staff_member_required(login_url="login")
 def tokens(request):
     """Let the signed-in user set their own tokens. Stored values are never shown."""
     instance = UserTokens.objects.filter(user=request.user).first() or UserTokens(
@@ -43,7 +43,7 @@ def tokens(request):
     )
 
 
-@staff_member_required
+@staff_member_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def pages(request):
     """Turn registered pages on and off. A disabled page is hidden from the sidebar."""
@@ -87,7 +87,7 @@ def pages(request):
     )
 
 
-@staff_member_required
+@staff_member_required(login_url="login")
 @require_http_methods(["POST"])
 def toggle_page(request: HttpRequest, slug: str) -> JsonResponse:
     """Enable or disable one page right away (the Pages switches); answers with JSON."""
@@ -102,7 +102,7 @@ def toggle_page(request: HttpRequest, slug: str) -> JsonResponse:
     return JsonResponse({"slug": slug, "enabled": meta.enabled})
 
 
-@staff_member_required
+@staff_member_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def team(request):
     """Team settings page."""

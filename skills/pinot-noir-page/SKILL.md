@@ -267,8 +267,9 @@ Wiring:
 
 The view (`manage_views.index`):
 
-- Decorate it with `@staff_member_required` and
-  `@require_http_methods(["GET", "POST"])`.
+- Decorate it with `@staff_member_required(login_url="login")` and
+  `@require_http_methods(["GET", "POST"])`. The explicit login URL sends users
+  to the frontend login page instead of Django's separate admin login.
 - Declare the commands as a module-level list of
   `site_admin.page_tasks.Command(task, label, description)`. Include the page's
   refresh task and any follow-up tasks (merges add bug submission). The

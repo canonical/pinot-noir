@@ -66,6 +66,21 @@
                                     {% endif %}
                                 </nav>
                             </div>
+                            <nav aria-label="Account" class="p-side-navigation--icons">
+                                <hr class="p-rule--muted">
+                                {% if request.user.is_authenticated %}
+                                    <div class="p-side-navigation__item">
+                                        <form method="post" action="{% url 'logout' %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="p-side-navigation__link p-button--base u-no-margin u-align--left" style="width: 100%;"><i class="p-icon--user is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Log out</span></button>
+                                        </form>
+                                    </div>
+                                {% else %}
+                                    <div class="p-side-navigation__item">
+                                        <a class="p-side-navigation__link" href="{% url 'login' %}"><i class="p-icon--user is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Log in</span></a>
+                                    </div>
+                                {% endif %}
+                            </nav>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}<title>Log in | Pinot Noir</title>{% endblock %}
+
+{% block content %}
+<main id="main-content" class="l-main">
+    <div class="p-panel">
+        <div class="p-panel__header">
+            <h4 class="p-panel__title u-no-margin--bottom">Log in</h4>
+        </div>
+        <div class="p-panel__content">
+            <div class="row">
+                <div class="col-4 col-medium-3">
+                    <form method="post" action="{% url 'login' %}" class="p-form p-form--stacked">
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                            <div class="p-notification--negative">
+                                <div class="p-notification__content">
+                                    <p class="p-notification__message">{{ form.non_field_errors|join:" " }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% for field in form %}
+                            <div class="p-form__group p-form-validation{% if field.errors %} is-error{% endif %}">
+                                <label class="p-form__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                <div class="p-form__control">
+                                    {{ field }}
+                                    {% for error in field.errors %}
+                                        <p class="p-form-validation__message">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                        <button type="submit" class="p-button--positive">Log in</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

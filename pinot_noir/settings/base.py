@@ -48,6 +48,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "pinot_noir.urls"
 
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "root-redirect"
+LOGOUT_REDIRECT_URL = "root-redirect"
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

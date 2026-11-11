@@ -29,7 +29,7 @@ class TokensPageTests(TestCase):
         self.client.logout()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)
-        self.assertIn(reverse("admin:login"), response["Location"])
+        self.assertIn(reverse("login"), response["Location"])
         User.objects.create_user("bob", password="pw")
         self.client.login(username="bob", password="pw")
         self.assertEqual(self.client.get(self.url).status_code, 302)

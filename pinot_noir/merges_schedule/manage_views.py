@@ -40,7 +40,7 @@ FILTERS = (
 )
 
 
-@staff_member_required
+@staff_member_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def index(request: HttpRequest) -> HttpResponse:
     """Merge Schedule settings, its schedule, and commands to run now."""
