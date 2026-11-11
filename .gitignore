@@ -1,6 +1,7 @@
 *.pyc
 .idea/
 static/CACHE/
+staticfiles/
 media/
 db.sqlite3
 .env
