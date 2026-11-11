@@ -1,7 +1,24 @@
+from django.conf import settings
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.urls import NoReverseMatch, reverse
 
+from .management.commands.collectstatic import VANILLA_CSS, VANILLA_URL
 from .models import PageMetadata
 from .registry import get_pages
+
+
+def vanilla_css(request):
+    """Use the CDN in development and collected Vanilla CSS in production."""
+    if settings.DEBUG:
+        return {"vanilla_css_url": VANILLA_URL}
+    try:
+        if staticfiles_storage.exists(VANILLA_CSS):
+            url = staticfiles_storage.url(VANILLA_CSS)
+        else:
+            url = VANILLA_URL
+    except (OSError, ValueError):
+        url = VANILLA_URL
+    return {"vanilla_css_url": url}
 
 
 def nav_entries(request):

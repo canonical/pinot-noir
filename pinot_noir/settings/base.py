@@ -20,7 +20,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.sites",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
     "django_tasks",
     "django_tasks_db",
     # Pinot Noir base applications
@@ -32,6 +31,8 @@ INSTALLED_APPS = [
     "pinot_noir.reviews",
     "pinot_noir.bug_triage",
     "pinot_noir.site_admin",
+    # Custom collectstatic including Vanilla CSS download
+    "django.contrib.staticfiles",
 ]
 
 MIDDLEWARE = [
@@ -58,6 +59,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "pinot_noir.pages.context_processors.nav_entries",
+                "pinot_noir.pages.context_processors.vanilla_css",
                 "pinot_noir.site_admin.context_processors.site_admin",
                 "pinot_noir.data_manager.context_processors.team",
             ],
@@ -107,7 +109,14 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # django-tasks configuration
 TASKS = {

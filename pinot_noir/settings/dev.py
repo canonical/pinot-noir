@@ -17,6 +17,11 @@ FIELD_ENCRYPTION_KEY = "django-insecure-encryption-key-pmh2!8w=q3xv0&zr+f^t1ng"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+STORAGES = {
+    **STORAGES,
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
 ALLOWED_HOSTS = ["*"]
 
 
