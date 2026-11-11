@@ -40,12 +40,11 @@
             return;
         }
         if (existing) return;
-        // Keep the registry order: insert before the next shown page, else before Admin.
+        // Keep registry order: insert before the next shown page, otherwise append to Main.
         var before = null;
         for (var next = row.nextElementSibling; next && !before; next = next.nextElementSibling) {
             before = navItem(next.dataset.slug);
         }
-        before = before || nav.querySelector("li[data-site-admin-nav]");
         nav.insertBefore(buildItem(row), before);
     }
 

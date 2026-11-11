@@ -63,6 +63,11 @@
                             </div>
                             <nav aria-label="Account" class="p-side-navigation--icons">
                                 <hr class="p-rule--muted">
+                                {% if user_settings_nav %}
+                                    <div class="p-side-navigation__item" data-user-settings-nav>
+                                        <a class="p-side-navigation__link{% if user_settings_nav.is_active %} is-active{% endif %}" href="{{ user_settings_nav.url }}"><i class="p-icon--user is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Settings</span></a>
+                                    </div>
+                                {% endif %}
                                 {% if site_admin_nav %}
                                     <div class="p-side-navigation__item" data-site-admin-nav>
                                         <a class="p-side-navigation__link{% if site_admin_nav.is_active %} is-active{% endif %}" href="{{ site_admin_nav.url }}"><i class="p-icon--user is-light p-side-navigation__icon"></i><span class="p-side-navigation__label">Admin</span></a>

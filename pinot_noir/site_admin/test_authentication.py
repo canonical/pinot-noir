@@ -36,6 +36,7 @@ class FrontendAuthenticationTests(TestCase):
         account_nav = content.split('<nav aria-label="Account"', 1)[1].split("</nav>", 1)[0]
         self.assertNotIn("data-site-admin-nav", main_nav)
         self.assertIn("data-site-admin-nav", account_nav)
+        self.assertIn("data-user-settings-nav", account_nav)
 
     def test_login_returns_to_requested_admin_page(self):
         response = self.client.post(
@@ -68,6 +69,7 @@ class FrontendAuthenticationTests(TestCase):
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
         response = self.client.get(page_url)
         self.assertContains(response, "Log out")
+        self.assertContains(response, "data-user-settings-nav")
         self.assertNotContains(response, f'href="{self.manage_url}"')
 
     def test_login_defaults_to_frontend(self):

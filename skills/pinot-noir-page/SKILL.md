@@ -329,7 +329,7 @@ Settings conventions (Lena's preferences):
 - **Help text:** put help text under a heading as
   `p-form-help-text` with `style="margin-top: 0;"`. Vanilla gives it -8px to
   tuck it under an input, so it overlaps a heading.
-- **Secrets:** never show secrets. Tokens live in My tokens and show as
+- **Secrets:** never show secrets. Tokens live in Settings > My tokens and show as
   Set/Not set.
 - **Checkboxes:** stack them with `p-checkbox` rather than
   `p-checkbox--inline`.
@@ -349,7 +349,8 @@ Tests (`test_manage.py`, see the merges one):
 - Don't name a test helper `settings`: it shadows `TestCase.settings`.
 
 See also the `pdbq-pinot-noir-ubq` skill's `references/site-admin.md` for the
-rest of the site admin (My team, My tokens, Pages).
+rest of the site admin (My team and Pages). Per-user settings such as My tokens
+live in `pinot_noir/user_settings/` at `/settings/`, outside the staff admin.
 
 ### 9. Django admin and tests
 

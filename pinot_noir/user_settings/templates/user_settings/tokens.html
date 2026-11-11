@@ -1,6 +1,6 @@
-{% extends 'site_admin/base.html' %}
+{% extends 'user_settings/base.html' %}
 
-{% block admin_content %}
+{% block settings_content %}
 <p>Tokens for your account, used when tasks and refreshes run as you. Stored tokens are encrypted and never shown again; leave a field blank to keep the current value.</p>
 <form method="post" autocomplete="off">
     {% csrf_token %}

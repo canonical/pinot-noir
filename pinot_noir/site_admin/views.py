@@ -5,11 +5,11 @@ from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.views.decorators.http import require_http_methods
 
-from pinot_noir.data_manager.models import TeamSettings, UserTokens
+from pinot_noir.data_manager.models import TeamSettings
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.pages.registry import get_page, get_pages
 
-from .forms import TeamNameForm, TokensForm
+from .forms import TeamNameForm
 from .lp_roles import TEAM_MEMBER, handle_role_post, role_tables
 from .sections import SECTIONS
 
@@ -17,30 +17,6 @@ from .sections import SECTIONS
 @staff_member_required(login_url="login")
 def index(request):
     return redirect(SECTIONS[0].url_name)
-
-
-@staff_member_required(login_url="login")
-def tokens(request):
-    """Let the signed-in user set their own tokens. Stored values are never shown."""
-    instance = UserTokens.objects.filter(user=request.user).first() or UserTokens(
-        user=request.user
-    )
-    form = TokensForm(request.POST or None, instance=instance)
-    if request.method == "POST" and form.is_valid():
-        changed = form.save()
-        if changed:
-            messages.success(request, f"Updated: {', '.join(changed)}.")
-        else:
-            messages.info(request, "No tokens changed.")
-        return redirect("site_admin:tokens")
-    return render(
-        request,
-        "site_admin/tokens.html",
-        {
-            "title": "My tokens",
-            "form": form,
-        },
-    )
 
 
 @staff_member_required(login_url="login")

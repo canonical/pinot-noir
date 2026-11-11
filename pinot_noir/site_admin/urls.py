@@ -1,4 +1,5 @@
 from django.urls import URLPattern, URLResolver, include, path
+from django.views.generic import RedirectView
 
 from pinot_noir.pages.registry import get_pages
 
@@ -8,7 +9,10 @@ app_name = "site_admin"
 
 urlpatterns: list[URLPattern | URLResolver] = [
     path("", views.index, name="index"),
-    path("tokens", views.tokens, name="tokens"),
+    path(
+        "tokens",
+        RedirectView.as_view(pattern_name="user_settings:tokens", permanent=False),
+    ),
     path("pages", views.pages, name="pages"),
     path("pages/<slug:slug>/toggle", views.toggle_page, name="toggle-page"),
     path("team", views.team, name="team"),

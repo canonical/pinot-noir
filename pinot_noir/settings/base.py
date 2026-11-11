@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "pinot_noir.reviews",
     "pinot_noir.bug_triage",
     "pinot_noir.site_admin",
+    "pinot_noir.user_settings",
     # Custom collectstatic including Vanilla CSS download
     "django.contrib.staticfiles",
 ]
@@ -65,6 +66,7 @@ TEMPLATES = [
                 "pinot_noir.pages.context_processors.nav_entries",
                 "pinot_noir.pages.context_processors.vanilla_css",
                 "pinot_noir.site_admin.context_processors.site_admin",
+                "pinot_noir.user_settings.context_processors.user_settings",
                 "pinot_noir.data_manager.context_processors.team",
             ],
         },
