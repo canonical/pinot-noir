@@ -54,7 +54,7 @@ class GoogleOAuthTests(TestCase):
         response = self.client.get(FAILURE_URL)
         self.assertContains(
             response,
-            "Google sign-in was not completed or did not match an active Pinot Noir account",
+            "Google sign-in was not completed or did not match an active account",
         )
 
     def test_login_link_requires_configuration(self):

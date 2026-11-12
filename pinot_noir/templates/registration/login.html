@@ -14,7 +14,7 @@
                     {% if google_oauth_failed %}
                         <div class="p-notification--negative">
                             <div class="p-notification__content">
-                                <p class="p-notification__message">Google sign-in was not completed or did not match an active Pinot Noir account.</p>
+                                <p class="p-notification__message">Google sign-in was not completed or did not match an active account.</p>
                             </div>
                         </div>
                     {% endif %}
@@ -44,7 +44,7 @@
                     {% if google_oauth_enabled %}
                         {% url 'oidc_authentication_init' as google_login_url %}
                         <hr class="p-rule">
-                        <p>Use the Google account for the email address on your Pinot Noir account.</p>
+                        <p>Login with email via Google Oauth.</p>
                         <a class="p-button" href="{{ google_login_url }}{% if next %}?next={{ next|urlencode }}{% endif %}">Continue with Google</a>
                     {% endif %}
                 </div>
