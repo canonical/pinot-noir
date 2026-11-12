@@ -1,61 +1,12 @@
-import hashlib
-
-from django import forms
 from django.contrib import admin
-from django.utils.safestring import mark_safe
 
-from .models import LPUser, UbuntuRelease
-
-
-class LPUserAdminForm(forms.ModelForm):
-    # Admin-only helper field: accept an email and compute email_md5 on save
-    email = forms.EmailField(
-        required=False, help_text="Optional: enter an email to compute MD5 for Gravatar"
-    )
-
-    class Meta:
-        model = LPUser
-        fields = ["username", "email_md5", "is_team_member", "is_review_marker"]
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        email = self.cleaned_data.get("email")
-        if email:
-            md5 = hashlib.md5(email.strip().lower().encode("utf-8")).hexdigest()
-            instance.email_md5 = md5
-        if commit:
-            instance.save()
-        return instance
+from .models import ReviewMarker, UbuntuRelease
 
 
-@admin.register(LPUser)
-class LPUserAdmin(admin.ModelAdmin):
-    form = LPUserAdminForm
-    list_display = (
-        "username",
-        "email_md5",
-        "is_team_member",
-        "is_review_marker",
-        "gravatar_preview",
-    )
-    list_filter = ("is_team_member", "is_review_marker")
+@admin.register(ReviewMarker)
+class ReviewMarkerAdmin(admin.ModelAdmin):
+    list_display = ("username",)
     search_fields = ("username",)
-    readonly_fields = ("email_md5", "gravatar_preview")
-    fields = (
-        "username",
-        "email",
-        "email_md5",
-        "is_team_member",
-        "is_review_marker",
-        "gravatar_preview",
-    )
-
-    @admin.display(description="Gravatar")
-    def gravatar_preview(self, obj):
-        if not obj or not obj.email_md5:
-            return ""
-        url = f"https://www.gravatar.com/avatar/{obj.email_md5}?s=48&d=identicon"
-        return mark_safe(f'<img src="{url}" alt="{obj.username}" width="48" height="48" />')
 
 
 @admin.register(UbuntuRelease)

@@ -1,18 +1,42 @@
+from django.contrib.auth.models import User
 from django.test import TestCase
 
-from pinot_noir.launchpad.models import LPUser
-
 from .models import Merge
+from .sync import MergeData
+from .tasks import upsert_merge
 from .views import sort_merges_default
+
+
+class AssigneeUserTests(TestCase):
+    def test_only_active_django_users_are_linked(self):
+        user = User.objects.create_user("alice")
+        data = MergeData(
+            lp_bug=101,
+            package="pkg",
+            merge_type=Merge.TYPE_MERGE,
+            assignee="alice",
+            milestone="",
+            status=Merge.STATUS_NEW,
+        )
+        upsert_merge(data)
+        merge = Merge.objects.get(lp_bug=101)
+        self.assertEqual(merge.assignee_user, user)
+
+        user.is_active = False
+        user.save()
+        upsert_merge(data)
+        merge.refresh_from_db()
+        self.assertIsNone(merge.assignee_user)
+        self.assertEqual(merge.assignee, "alice")
 
 
 class SortMergesDefaultTests(TestCase):
     def setUp(self):
-        # Create some launchpad users for assignee_user
-        self.alice = LPUser.objects.create(username="alice")
-        self.bob = LPUser.objects.create(username="bob")
-        self.carol = LPUser.objects.create(username="carol")
-        self.dave = LPUser.objects.create(username="dave")
+        # Create Django users for assignee_user.
+        self.alice = User.objects.create_user(username="alice")
+        self.bob = User.objects.create_user(username="bob")
+        self.carol = User.objects.create_user(username="carol")
+        self.dave = User.objects.create_user(username="dave")
 
     def test_status_order(self):
         """Merges should sort by status in the order: new, started, projected, done."""

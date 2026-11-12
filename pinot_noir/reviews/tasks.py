@@ -1,5 +1,6 @@
 """Background tasks that keep the reviews page in sync with Launchpad."""
 
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 from django_tasks import task
@@ -7,7 +8,7 @@ from django_tasks_db.models import DBTaskResult
 from ubq.errors import RequestTimeoutError
 
 from pinot_noir.data_manager.common import get_launchpad_service_for_user
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.launchpad.models import ReviewMarker
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.reviews.apps import PAGE_SLUG
 from pinot_noir.reviews.models import Review
@@ -18,9 +19,8 @@ from pinot_noir.reviews.sync import ReviewData, review_from_merge_request
 def refresh_reviews(username: str) -> None:
     """Replace the reviews table with current merge request data from Launchpad.
 
-    Iterates over all stored LPUser records, queries Launchpad for each user's
-    open merge proposals via ubq, then atomically replaces the contents of the
-    reviews table.
+    Queries every active Django team user's open merge proposals via Launchpad,
+    then atomically replaces the contents of the reviews table.
     """
 
     DBTaskResult.objects.filter(
@@ -31,18 +31,15 @@ def refresh_reviews(username: str) -> None:
 
     service = get_launchpad_service_for_user(username)
 
-    marker_usernames = set(
-        LPUser.objects.filter(is_review_marker=True).values_list("username", flat=True)
-    )
+    marker_usernames = set(ReviewMarker.objects.values_list("username", flat=True))
+    team_users = list(User.objects.filter(is_active=True).order_by("username"))
+    team_usernames = {user.username for user in team_users}
     reviewers_by_username = {
-        user.username: user for user in LPUser.objects.filter(is_review_marker=False)
+        user.username: user for user in team_users if user.username not in marker_usernames
     }
 
-    team_users = set(LPUser.objects.filter(is_team_member=True))
-    team_usernames = set(user.username for user in team_users)
-
     # Collect reviews from Launchpad.
-    reviews_to_import: dict[str, tuple[ReviewData, LPUser]] = {}
+    reviews_to_import: dict[str, tuple[ReviewData, User]] = {}
 
     for lp_user in team_users:
         try:

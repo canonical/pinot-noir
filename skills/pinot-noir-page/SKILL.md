@@ -107,9 +107,11 @@ retype the string.
 
 - Use a stable natural key from the source as a `unique=True` field (reviews
   use `mp_url`, merges use `bug_id`). The sync upserts on it.
-- Link Launchpad people with `ForeignKey(LPUser, null=True, on_delete=SET_NULL)`
-  and keep the raw username string beside it (see `Review.reviewer` /
-  `reviewer_user`), because not every Launchpad user has an LPUser row.
+- Link team members with `ForeignKey(settings.AUTH_USER_MODEL, null=True,
+  on_delete=SET_NULL)` and keep the raw username string beside it (see
+  `Review.reviewer` / `reviewer_user`), because not every Launchpad user has an
+  active Django account. Review markers are standalone usernames on
+  `launchpad.ReviewMarker`, not Django-user foreign keys.
 - Put status values in class constants plus `STATUS_CHOICES`.
 - Run `uv run manage.py makemigrations <app>`.
 - Settings for the page go in a model in the app, edited in the page's admin

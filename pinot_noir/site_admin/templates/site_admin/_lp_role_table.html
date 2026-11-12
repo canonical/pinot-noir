@@ -1,4 +1,5 @@
-{# One LPUser role table: add form + users with Remove. Context: table (see lp_roles.role_tables). #}
+{% load launchpad_tags %}
+{# One user or review-marker table: add form + rows with Remove/Deactivate. #}
 <section class="u-sv3" aria-labelledby="{{ table.role }}-heading">
     <{{ heading_tag|default:"h3" }} class="{{ heading_class|default:"p-heading--5" }}" id="{{ table.role }}-heading">{{ table.title }} <span class="p-badge">{{ table.users|length }}</span></{{ heading_tag|default:"h3" }}>
     <p class="u-text--muted">{{ table.description }}</p>
@@ -25,7 +26,7 @@
         <tbody>
             {% for user in table.users %}
                 <tr>
-                    <td>{% if user.gravatar_url %}<img src="{{ user.gravatar_url }}?s=32&d=identicon" alt="" width="32" height="32" style="border-radius: 50%;">{% endif %}</td>
+                    <td>{% if user.email %}<img src="{{ user|gravatar_url }}?s=32&d=identicon" alt="" width="32" height="32" style="border-radius: 50%;">{% endif %}</td>
                     <td><a href="https://launchpad.net/~{{ user.username }}" target="_blank" rel="noopener noreferrer">{{ user.username }}</a></td>
                     <td class="u-align--right">
                         <form method="post" class="u-no-margin--bottom">

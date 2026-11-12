@@ -29,6 +29,11 @@ class GoogleOIDCAuthenticationBackend(OIDCAuthenticationBackend):
             return self.UserModel.objects.none()
         return users
 
+    def get_user(self, user_id):
+        """Do not keep an OAuth session valid after the user is deactivated."""
+        user = super().get_user(user_id)
+        return user if user is not None and user.is_active else None
+
 
 def google_oauth(request):
     """Expose only non-secret Google OAuth state to the login template."""

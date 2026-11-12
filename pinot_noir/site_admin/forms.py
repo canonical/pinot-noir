@@ -1,24 +1,16 @@
-import hashlib
-
 from django import forms
+from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 
 from pinot_noir.data_manager.models import TeamSettings
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.launchpad.models import ReviewMarker
 
 # Launchpad user names: lowercase letters, digits, and + - . (not first).
 LP_NAME = RegexValidator(r"^[a-z0-9][a-z0-9+.-]*$", "Enter a Launchpad user name.")
 
 
-class LPUserRoleForm(forms.Form):
-    """Add a Launchpad user to one role (team member or review marker)."""
-
+class LaunchpadUsernameForm(forms.Form):
     username = forms.CharField(label="Launchpad user name", max_length=100)
-    email = forms.EmailField(
-        label="Email (optional)",
-        required=False,
-        help_text="Only used to show their Gravatar; just its MD5 hash is stored.",
-    )
 
     def clean_username(self):
         # Accept ~name and capitals as pasted from Launchpad URLs, then validate.
@@ -26,21 +18,48 @@ class LPUserRoleForm(forms.Form):
         LP_NAME(username)
         return username
 
-    def save(self, role: str) -> tuple[LPUser, bool]:
-        """Set *role* on the user, creating it if needed. Return (user, was_already_set)."""
-        user, _ = LPUser.objects.get_or_create(username=self.cleaned_data["username"])
-        already = getattr(user, role)
-        setattr(user, role, True)
-        if email := self.cleaned_data.get("email"):
-            user.email_md5 = hashlib.md5(email.strip().lower().encode("utf-8")).hexdigest()
-        user.save()
-        return user, already
+
+class RoleForm(LaunchpadUsernameForm):
+    def save(self) -> tuple[User | ReviewMarker, bool]:
+        raise NotImplementedError
 
 
-class ReviewMarkerForm(LPUserRoleForm):
-    """Review markers are often teams and never shown with an avatar: no email."""
+class TeamMemberForm(RoleForm):
+    """Create, reactivate, or update a Django user used as a Launchpad team member."""
 
-    email = None
+    username = forms.CharField(
+        label="Username",
+        max_length=100,
+        help_text="Also used as the Launchpad username.",
+    )
+    email = forms.EmailField(
+        label="Email (optional)",
+        required=False,
+        help_text="Used for Google sign-in and Gravatar.",
+    )
+
+    def save(self) -> tuple[User, bool]:
+        username = self.cleaned_data["username"]
+        email = self.cleaned_data["email"].strip()
+        user = User.objects.filter(username=username).first()
+        if user is None:
+            return User.objects.create_user(username=username, email=email), False
+        already_active = user.is_active
+        user.is_active = True
+        if email:
+            user.email = email
+        user.save(update_fields=["is_active", "email"])
+        return user, already_active
+
+
+class ReviewMarkerForm(RoleForm):
+    """Create a review-marker username independently of Django accounts."""
+
+    def save(self) -> tuple[ReviewMarker, bool]:
+        marker, created = ReviewMarker.objects.get_or_create(
+            username=self.cleaned_data["username"]
+        )
+        return marker, not created
 
 
 class TeamNameForm(forms.ModelForm):

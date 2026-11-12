@@ -1,34 +1,17 @@
 from django.db import models
 
 
-class LPUser(models.Model):
-    """Launchpad user model.
-
-    Username is the primary key and an optional email md5 is stored for Gravatar.
-    """
+class ReviewMarker(models.Model):
+    """A Launchpad user or team whose assignment marks a review for the board."""
 
     username = models.CharField(max_length=100, primary_key=True)
-    email_md5 = models.CharField(max_length=32, blank=True, null=True)
-
-    # Whether this user is a member of the team
-    is_team_member = models.BooleanField(default=False)
-
-    # Whether this user, when assigned to a review, makes the review appear on the board
-    is_review_marker = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = "Launchpad user"
-        verbose_name_plural = "Launchpad users"
+        verbose_name = "Review marker"
+        verbose_name_plural = "Review markers"
 
     def __str__(self) -> str:
         return self.username
-
-    @property
-    def gravatar_url(self) -> str:
-        """Return Gravatar URL when md5 available, otherwise an empty string."""
-        if not self.email_md5:
-            return ""
-        return f"https://www.gravatar.com/avatar/{self.email_md5}"
 
 
 class UbuntuRelease(models.Model):
@@ -42,8 +25,8 @@ class UbuntuRelease(models.Model):
     STATUS_CHOICES = [
         (STATUS_DEVEL, "devel"),
         (STATUS_SUPPORTED, "supported"),
-        (STATUS_EXTENDED_SUPPORT, "esm"),
-        (STATUS_END_OF_LIFE, "eol"),
+        (STATUS_EXTENDED_SUPPORT, STATUS_EXTENDED_SUPPORT),
+        (STATUS_END_OF_LIFE, STATUS_END_OF_LIFE),
     ]
 
     # Release name

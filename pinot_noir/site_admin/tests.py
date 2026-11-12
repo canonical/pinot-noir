@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from pinot_noir.data_manager.models import TeamSettings
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.launchpad.models import ReviewMarker
 from pinot_noir.pages.models import PageMetadata
 from pinot_noir.pages.registry import get_pages
 
@@ -91,62 +91,92 @@ class TogglePageTests(TestCase):
 
 class TeamPageTests(TestCase):
     def setUp(self):
-        self.client.force_login(User.objects.create_user("alice", is_staff=True))
+        self.user = User.objects.create_user("alice", email="Alice@Example.com", is_staff=True)
+        self.client.force_login(self.user)
         self.url = reverse("site_admin:team")
 
     def test_index_redirects_to_team(self):
         self.assertRedirects(self.client.get(reverse("site_admin:index")), self.url)
 
-    def add(self, role, prefix, username, email=""):
-        data = {"role": role, f"{prefix}-username": username, f"{prefix}-email": email}
+    def add(self, username, email=""):
+        data = {"role": "team", "team-username": username, "team-email": email}
         return self.client.post(self.url, data, follow=True)
 
-    def remove(self, role, username):
-        data = {"role": role, "action": "remove", "username": username}
+    def remove(self, username):
+        data = {"role": "team", "action": "remove", "username": username}
         return self.client.post(self.url, data, follow=True)
 
     def test_requires_staff(self):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 302)
 
-    def test_lists_team_members_only(self):
-        LPUser.objects.create(username="lvoytek", is_team_member=True)
-        LPUser.objects.create(username="ubuntu-server", is_review_marker=True)
-        LPUser.objects.create(username="someone")
+    def test_lists_active_django_users_only(self):
+        User.objects.create_user("lvoytek")
+        User.objects.create_user("inactive", is_active=False)
         response = self.client.get(self.url)
         (team,) = response.context["tables"]
-        self.assertEqual([u.username for u in team["users"]], ["lvoytek"])
-        self.assertNotContains(response, "ubuntu-server")
+        self.assertEqual([u.username for u in team["users"]], ["alice", "lvoytek"])
+        self.assertNotContains(response, "inactive")
         self.assertNotContains(response, 'name="marker-username"')
 
     def test_add_team_member_with_email(self):
-        response = self.add("is_team_member", "team", "~LVoytek", "Lena@Example.com")
+        response = self.add("~LVoytek", "Lena@Example.com")
         self.assertContains(response, "Added lvoytek to team members.")
-        user = LPUser.objects.get(username="lvoytek")
-        self.assertTrue(user.is_team_member)
-        self.assertFalse(user.is_review_marker)
-        self.assertEqual(user.email_md5, hashlib.md5(b"lena@example.com").hexdigest())
+        user = User.objects.get(username="lvoytek")
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.email, "Lena@example.com")
+        self.assertFalse(user.has_usable_password())
+
+    def test_gravatar_is_generated_from_normalized_django_email(self):
+        response = self.client.get(self.url)
+        email_hash = hashlib.md5(b"alice@example.com", usedforsecurity=False).hexdigest()
+        self.assertContains(response, f"https://www.gravatar.com/avatar/{email_hash}?s=32")
 
     def test_invalid_username_shows_error(self):
-        response = self.add("is_team_member", "team", "not a name")
+        response = self.add("not a name")
         self.assertContains(response, "Enter a Launchpad user name")
-        self.assertFalse(LPUser.objects.exists())
+        self.assertEqual(User.objects.count(), 1)
 
     def test_review_marker_posts_are_ignored_here(self):
-        self.add("is_review_marker", "marker", "some-team")
-        self.assertFalse(LPUser.objects.exists())
+        self.client.post(self.url, {"role": "review-marker", "marker-username": "some-team"})
+        self.assertEqual(User.objects.count(), 1)
 
-    def test_remove_clears_only_that_role(self):
-        LPUser.objects.create(username="lvoytek", is_team_member=True, is_review_marker=True)
-        response = self.remove("is_team_member", "lvoytek")
-        self.assertContains(response, "Removed lvoytek from team members.")
-        user = LPUser.objects.get(username="lvoytek")
-        self.assertFalse(user.is_team_member)
-        self.assertTrue(user.is_review_marker)
+    def test_remove_deactivates_user_without_removing_review_marker(self):
+        user = User.objects.create_user("lvoytek")
+        ReviewMarker.objects.create(username="lvoytek")
+        response = self.remove("lvoytek")
+        self.assertContains(response, "Deactivated lvoytek.")
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)
+        self.assertTrue(ReviewMarker.objects.filter(username="lvoytek").exists())
+
+    def test_cannot_deactivate_own_account(self):
+        response = self.remove("alice")
+        self.assertContains(response, "You cannot deactivate your own account.")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+
+    def test_add_reactivates_user_and_updates_email_without_resetting_password(self):
+        user = User.objects.create_user(
+            "lvoytek", email="old@example.com", password="pw", is_active=False
+        )
+        response = self.add("LVoytek", "new@example.com")
+        self.assertContains(response, "Added lvoytek to team members.")
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.email, "new@example.com")
+        self.assertTrue(user.check_password("pw"))
+
+    def test_existing_active_user_email_can_be_updated(self):
+        user = User.objects.create_user("lvoytek", email="old@example.com")
+        response = self.add("lvoytek", "new@example.com")
+        self.assertContains(response, "lvoytek is already in team members.")
+        user.refresh_from_db()
+        self.assertEqual(user.email, "new@example.com")
 
     def test_unknown_role_is_ignored(self):
         self.client.post(self.url, {"role": "is_superuser", "action": "remove", "username": "x"})
-        self.assertFalse(LPUser.objects.exists())
+        self.assertEqual(User.objects.count(), 1)
 
 
 class TeamNameTests(TestCase):
@@ -184,10 +214,11 @@ class TeamNameTests(TestCase):
         )
         self.assertEqual(TeamSettings.objects.count(), 1)
 
-    def test_name_form_does_not_touch_lp_users(self):
-        LPUser.objects.create(username="someone", is_team_member=True)
+    def test_name_form_does_not_touch_users(self):
+        user = User.objects.create_user("someone", is_active=False)
         self.set_name("Server Team")
-        self.assertTrue(LPUser.objects.get(username="someone").is_team_member)
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)
 
     def test_settings_are_per_site(self):
         other = Site.objects.create(domain="other.example", name="other")

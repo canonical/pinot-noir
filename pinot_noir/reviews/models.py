@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -26,7 +27,7 @@ class Review(models.Model):
 
     reviewer = models.CharField(max_length=100, blank=True)
     reviewer_user = models.ForeignKey(
-        "launchpad.LPUser",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -35,7 +36,7 @@ class Review(models.Model):
 
     submitter = models.CharField(max_length=100, blank=True)
     submitter_user = models.ForeignKey(
-        "launchpad.LPUser",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

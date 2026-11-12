@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 from django_tasks import task
@@ -18,7 +19,6 @@ from pinot_noir.data_manager.models import (
     BackportBugPackageInfo,
     MergeBugFilterSettings,
 )
-from pinot_noir.launchpad.models import LPUser
 from pinot_noir.merges_schedule.apps import PAGE_SLUG
 from pinot_noir.merges_schedule.models import Merge
 from pinot_noir.merges_schedule.sync import MergeData, collect_bugs_for_type, merge_from_bug
@@ -32,7 +32,7 @@ def _backport_groups() -> list[tuple[str, set[str]]]:
 
 
 def upsert_merge(data: MergeData) -> None:
-    """Create or update the Merge row for *data*, resolving the assignee LPUser."""
+    """Create or update the Merge row for *data*, resolving the assignee Django user."""
     Merge.objects.update_or_create(
         lp_bug=data.lp_bug,
         defaults={
@@ -40,7 +40,9 @@ def upsert_merge(data: MergeData) -> None:
             "merge_type": data.merge_type,
             "assignee": data.assignee,
             "assignee_user": (
-                LPUser.objects.filter(username=data.assignee).first() if data.assignee else None
+                User.objects.filter(username=data.assignee, is_active=True).first()
+                if data.assignee
+                else None
             ),
             "milestone": data.milestone,
             "status": data.status,

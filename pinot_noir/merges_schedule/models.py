@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -38,9 +39,9 @@ class Merge(models.Model):
     # Launchpad username of assignee
     assignee = models.CharField(max_length=100, blank=True)
 
-    # Optional foreign key to a Launchpad user; will be populated from `assignee` via migration
+    # Optional foreign key to a team member's Django user.
     assignee_user = models.ForeignKey(
-        "launchpad.LPUser",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

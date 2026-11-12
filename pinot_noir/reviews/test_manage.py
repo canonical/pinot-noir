@@ -4,7 +4,7 @@ from django.urls import reverse
 from django_tasks_db.models import DBTaskResult
 
 from pinot_noir.data_manager.models import UserTokens
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.launchpad.models import ReviewMarker
 
 from .tasks import refresh_reviews
 
@@ -18,7 +18,7 @@ class ReviewsManageTests(TestCase):
         self.url = reverse("site_admin:reviews:index")
 
     def add(self, username, email=""):
-        data = {"role": "is_review_marker", "marker-username": username, "marker-email": email}
+        data = {"role": "review-marker", "marker-username": username, "marker-email": email}
         return self.client.post(self.url, data, follow=True)
 
     def test_mounted_under_manage_with_page_slug(self):
@@ -28,9 +28,9 @@ class ReviewsManageTests(TestCase):
         self.client.logout()
         self.assertEqual(self.client.get(self.url).status_code, 302)
 
-    def test_renders_three_sections_and_markers_only(self):
-        LPUser.objects.create(username="lvoytek", is_team_member=True)
-        LPUser.objects.create(username="ubuntu-server", is_review_marker=True)
+    def test_renders_sections_and_markers_only(self):
+        User.objects.create_user("lvoytek")
+        ReviewMarker.objects.create(username="ubuntu-server")
         response = self.client.get(self.url)
         for heading in ("Settings", "Schedule", "Commands", "Review markers"):
             self.assertContains(response, heading)
@@ -38,41 +38,46 @@ class ReviewsManageTests(TestCase):
         self.assertEqual([u.username for u in markers["users"]], ["ubuntu-server"])
         self.assertNotContains(response, 'name="team-username"')
 
-    def test_add_marker_keeps_other_role(self):
-        LPUser.objects.create(username="lvoytek", is_team_member=True, email_md5="x" * 32)
+    def test_add_marker_does_not_change_django_user(self):
+        user = User.objects.create_user("lvoytek", email="lena@example.com")
         response = self.add("~LVoytek")
         self.assertContains(response, "Added lvoytek to review markers.")
         self.assertRedirects(response, self.url)
-        user = LPUser.objects.get(username="lvoytek")
-        self.assertTrue(user.is_team_member and user.is_review_marker)
-        self.assertEqual(user.email_md5, "x" * 32)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.email, "lena@example.com")
+        self.assertTrue(ReviewMarker.objects.filter(username="lvoytek").exists())
         self.assertContains(self.add("lvoytek"), "already in review markers")
 
-    def test_markers_have_no_email(self):
+    def test_markers_have_no_email_or_django_user(self):
         response = self.client.get(self.url)
         self.assertNotContains(response, 'name="marker-email"')
         self.add("some-team", "ignored@example.com")
-        self.assertIsNone(LPUser.objects.get(username="some-team").email_md5)
+        marker = ReviewMarker.objects.get(username="some-team")
+        self.assertFalse(hasattr(marker, "email"))
+        self.assertFalse(User.objects.filter(username="some-team").exists())
 
     def test_invalid_username(self):
         response = self.add("not a name")
         self.assertContains(response, "Enter a Launchpad user name")
         self.assertTrue(response.context["tables"][0]["form"].errors)
-        self.assertFalse(LPUser.objects.exists())
+        self.assertFalse(ReviewMarker.objects.exists())
 
-    def test_remove_clears_only_marker(self):
-        LPUser.objects.create(username="lvoytek", is_team_member=True, is_review_marker=True)
-        data = {"role": "is_review_marker", "action": "remove", "username": "lvoytek"}
+    def test_remove_only_deletes_marker(self):
+        user = User.objects.create_user("lvoytek")
+        ReviewMarker.objects.create(username="lvoytek")
+        data = {"role": "review-marker", "action": "remove", "username": "lvoytek"}
         response = self.client.post(self.url, data, follow=True)
         self.assertContains(response, "Removed lvoytek from review markers.")
-        user = LPUser.objects.get(username="lvoytek")
-        self.assertFalse(user.is_review_marker)
-        self.assertTrue(user.is_team_member)
+        self.assertFalse(ReviewMarker.objects.filter(username="lvoytek").exists())
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
 
     def test_team_member_posts_are_ignored_here(self):
-        data = {"role": "is_team_member", "team-username": "lvoytek"}
+        data = {"role": "team", "team-username": "lvoytek"}
         self.client.post(self.url, data)
-        self.assertFalse(LPUser.objects.exists())
+        self.assertFalse(User.objects.filter(username="lvoytek").exists())
+        self.assertFalse(ReviewMarker.objects.exists())
 
     def test_refresh_reviews_is_the_only_task(self):
         response = self.client.get(self.url)

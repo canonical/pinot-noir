@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% load static %}
+{% load static launchpad_tags %}
 
 {% block title %}<title>{{ title|default:'Reviews' }}</title>{% endblock %}
 
@@ -87,8 +87,8 @@
                             <td>{% if review.release_version %}{{ review.release_version }}{% else %}&mdash;{% endif %}</td>
                             <td>
                                 {% if review.submitter_user %}
-                                    {% if review.submitter_user.email_md5 %}
-                                        <img src="{{ review.submitter_user.gravatar_url }}" alt="{{ review.submitter_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                                    {% if review.submitter_user.email %}
+                                        <img src="{{ review.submitter_user|gravatar_url }}" alt="{{ review.submitter_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
                                     {% endif %}
                                     <a href="https://launchpad.net/~{{ review.submitter_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.submitter_user.username }}</a>
                                 {% elif review.submitter %}
@@ -99,8 +99,8 @@
                             </td>
                             <td>
                                 {% if review.reviewer_user %}
-                                    {% if review.reviewer_user.email_md5 %}
-                                        <img src="{{ review.reviewer_user.gravatar_url }}" alt="{{ review.reviewer_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
+                                    {% if review.reviewer_user.email %}
+                                        <img src="{{ review.reviewer_user|gravatar_url }}" alt="{{ review.reviewer_user.username }}" width="24" height="24" style="clip-path: ellipse(42% 50% at 50% 50%);" />
                                     {% endif %}
                                     <a href="https://launchpad.net/~{{ review.reviewer_user.username }}" target="_blank" rel="noopener noreferrer">{{ review.reviewer_user.username }}</a>
                                 {% elif review.reviewer %}

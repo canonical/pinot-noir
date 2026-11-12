@@ -1,6 +1,5 @@
+from django.contrib.auth.models import User
 from django.test import TestCase
-
-from pinot_noir.launchpad.models import LPUser
 
 from .models import Review
 from .views import sort_reviews_default
@@ -8,8 +7,8 @@ from .views import sort_reviews_default
 
 class SortReviewsDefaultTests(TestCase):
     def setUp(self):
-        self.alice = LPUser.objects.create(username="alice")
-        self.bob = LPUser.objects.create(username="bob")
+        self.alice = User.objects.create_user(username="alice")
+        self.bob = User.objects.create_user(username="bob")
 
     def test_status_order(self):
         Review.objects.create(

@@ -1,35 +1,35 @@
-"""Tables of Launchpad users holding a role flag on LPUser (team member, review marker).
-
-Shared by My team and the Reviews page's admin section: each view lists the roles
-it shows, sends role POSTs to :func:`handle_role_post`, and renders
-:func:`role_tables` with ``site_admin/_lp_role_table.html``.
-"""
+"""Team-member and review-marker tables shared by staff management pages."""
 
 from dataclasses import dataclass
 
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.launchpad.models import ReviewMarker
 
-from .forms import LPUserRoleForm, ReviewMarkerForm
+from .forms import ReviewMarkerForm, RoleForm, TeamMemberForm
 
 
 @dataclass(frozen=True)
 class Role:
-    field: str  # boolean field on LPUser
-    prefix: str  # form prefix
-    table: str  # what the table is called in messages, lowercase
-    form: type[LPUserRoleForm]
+    key: str
+    prefix: str
+    table: str
+    form: type[RoleForm]
     description: str
 
 
 TEAM_MEMBER = Role(
-    "is_team_member", "team", "team members", LPUserRoleForm, "Launchpad users on the team."
+    "team",
+    "team",
+    "team members",
+    TeamMemberForm,
+    "Active Django users on the team. Their usernames are used as Launchpad usernames.",
 )
 REVIEW_MARKER = Role(
-    "is_review_marker",
+    "review-marker",
     "marker",
     "review markers",
     ReviewMarkerForm,
@@ -40,24 +40,27 @@ REVIEW_MARKER = Role(
 
 def handle_role_post(
     request: HttpRequest, roles: list[Role]
-) -> HttpResponse | tuple[Role, LPUserRoleForm] | None:
-    """Handle an add or remove POST for one of ``roles``.
-
-    Returns a redirect when handled, ``(role, bound form)`` when adding failed
-    validation, or None when the POST isn't for one of these roles.
-    """
-    role = next((r for r in roles if r.field == request.POST.get("role")), None)
+) -> HttpResponse | tuple[Role, RoleForm] | None:
+    """Handle an add, deactivate, or remove POST for one of ``roles``."""
+    role = next((r for r in roles if r.key == request.POST.get("role")), None)
     if role is None:
         return None
     if request.POST.get("action") == "remove":
         username = request.POST.get("username", "")
-        if LPUser.objects.filter(username=username).update(**{role.field: False}):
-            messages.success(request, f"Removed {username} from {role.table}.")
+        if role == TEAM_MEMBER:
+            if username == request.user.get_username():
+                messages.error(request, "You cannot deactivate your own account.")
+            elif User.objects.filter(username=username, is_active=True).update(is_active=False):
+                messages.success(request, f"Deactivated {username}.")
+        else:
+            deleted, _ = ReviewMarker.objects.filter(username=username).delete()
+            if deleted:
+                messages.success(request, f"Removed {username} from {role.table}.")
         return redirect(request.path)
     form = role.form(request.POST, prefix=role.prefix)
     if not form.is_valid():
         return role, form
-    user, already = form.save(role.field)
+    user, already = form.save()
     if already:
         messages.info(request, f"{user.username} is already in {role.table}.")
     else:
@@ -65,15 +68,22 @@ def handle_role_post(
     return redirect(request.path)
 
 
-def role_tables(roles: list[Role], bound: tuple[Role, LPUserRoleForm] | None = None) -> list:
+def role_tables(roles: list[Role], bound: tuple[Role, RoleForm] | None = None) -> list:
     """Context for ``_lp_role_table.html``, one entry per role."""
-    return [
-        {
-            "role": role.field,
-            "title": role.table.capitalize(),
-            "description": role.description,
-            "form": bound[1] if bound and bound[0] == role else role.form(prefix=role.prefix),
-            "users": LPUser.objects.filter(**{role.field: True}).order_by("username"),
-        }
-        for role in roles
-    ]
+    tables = []
+    for role in roles:
+        users = (
+            User.objects.filter(is_active=True)
+            if role == TEAM_MEMBER
+            else ReviewMarker.objects.all()
+        )
+        tables.append(
+            {
+                "role": role.key,
+                "title": role.table.capitalize(),
+                "description": role.description,
+                "form": bound[1] if bound and bound[0] == role else role.form(prefix=role.prefix),
+                "users": users.order_by("username"),
+            }
+        )
+    return tables

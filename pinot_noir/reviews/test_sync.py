@@ -2,9 +2,10 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 
-from pinot_noir.launchpad.models import LPUser
+from pinot_noir.launchpad.models import ReviewMarker
 from pinot_noir.reviews.models import Review
 from pinot_noir.reviews.sync import review_status_from_merge_request
 from pinot_noir.reviews.tasks import refresh_reviews
@@ -28,8 +29,8 @@ def _mr(web_url, status, **kwargs):
 class RefreshReviewsTests(TestCase):
     @patch("pinot_noir.reviews.tasks.get_launchpad_service_for_user")
     def test_skips_rejected_and_superseded_merge_proposals(self, get_service_mock):
-        submitter = LPUser.objects.create(username="graysonwolf", is_team_member=True)
-        LPUser.objects.create(username="ubuntu-server", is_review_marker=True)
+        submitter = User.objects.create_user(username="graysonwolf")
+        ReviewMarker.objects.create(username="ubuntu-server")
 
         service = MagicMock()
         service.get_merge_requests_from_user.side_effect = lambda user_id, **kw: (
@@ -50,6 +51,21 @@ class RefreshReviewsTests(TestCase):
         self.assertEqual(review.mp_url, "https://lp.test/merge/3")
         self.assertEqual(review.submitter_user, submitter)
         self.assertEqual(review.status, Review.STATUS_NEEDS_REVIEW)
+
+    @patch("pinot_noir.reviews.tasks.get_launchpad_service_for_user")
+    def test_does_not_fetch_for_inactive_users(self, get_service_mock):
+        User.objects.create_user("active")
+        User.objects.create_user("inactive", is_active=False)
+        service = MagicMock()
+        service.get_merge_requests_from_user.return_value = []
+        get_service_mock.return_value = service
+
+        refresh_reviews.call("active")
+
+        fetched = [
+            call.kwargs["user_id"] for call in service.get_merge_requests_from_user.call_args_list
+        ]
+        self.assertEqual(fetched, ["active"])
 
 
 def _vote(username, vote, voted_at=None):

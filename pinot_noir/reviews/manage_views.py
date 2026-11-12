@@ -3,7 +3,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
-from pinot_noir.site_admin.forms import LPUserRoleForm
+from pinot_noir.site_admin.forms import RoleForm
 from pinot_noir.site_admin.lp_roles import REVIEW_MARKER, Role, handle_role_post, role_tables
 from pinot_noir.site_admin.page_tasks import (
     Command,
@@ -29,7 +29,7 @@ COMMANDS = [
 @require_http_methods(["GET", "POST"])
 def index(request: HttpRequest) -> HttpResponse:
     """Reviews settings (review markers), its schedule, and commands to run now."""
-    bound: tuple[Role, LPUserRoleForm] | None = None
+    bound: tuple[Role, RoleForm] | None = None
     schedule_form: ScheduleForm | None = None
     if request.method == "POST":
         role_result = handle_role_post(request, [REVIEW_MARKER])

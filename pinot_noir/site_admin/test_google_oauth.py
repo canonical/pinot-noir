@@ -113,6 +113,16 @@ class GoogleOAuthTests(TestCase):
         response = self.callback({"email": self.user.email, "email_verified": True})
         self.assert_login_rejected(response)
 
+    def test_deactivating_user_invalidates_google_session(self):
+        response = self.callback({"email": self.user.email, "email_verified": True})
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+        self.user.is_active = False
+        self.user.save()
+        settings_url = reverse("user_settings:general")
+        response = self.client.get(settings_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"{reverse('login')}?next={settings_url}")
+
     def test_unsafe_next_url_is_not_used(self):
         response = self.callback(
             {"email": self.user.email, "email_verified": True},
