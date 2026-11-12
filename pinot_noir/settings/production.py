@@ -7,6 +7,8 @@ Required environment variables:
   DJANGO_FIELD_ENCRYPTION_KEY_VALUE - Key used to encrypt sensitive model fields
   DJANGO_ALLOWED_HOSTS - JSON-encoded list of allowed hostnames
   DJANGO_BASE_URL - Public base URL, used as the trusted CSRF origin
+  GOOGLE_OAUTH_CLIENT_ID - Optional Google OAuth web client ID
+  GOOGLE_OAUTH_CLIENT_SECRET - Optional Google OAuth web client secret
   POSTGRESQL_DB_NAME - PostgreSQL database name
   POSTGRESQL_DB_USERNAME - PostgreSQL user
   POSTGRESQL_DB_PASSWORD - PostgreSQL password

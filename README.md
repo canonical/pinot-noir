@@ -38,20 +38,39 @@ Then load the variables into your shell before running any commands:
 set -a; source .env; set +a
 ```
 
-### 2. Apply migrations and collect static files
+### 2. Configure Google sign-in (optional)
+
+In Google Cloud Console, create an OAuth 2.0 Web application client. Add the
+public callback URL, including the trailing slash, to its authorized redirect
+URIs:
+
+```text
+https://<Domain Name>/oidc/callback/
+```
+
+Add the generated credentials to `.env`:
+
+```bash
+GOOGLE_OAUTH_CLIENT_ID=your-google-client-id
+GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret
+```
+
+The Continue with Google button appears only when both values are configured.
+
+### 3. Apply migrations and collect static files
 
 ```bash
 uv run manage.py migrate
 uv run manage.py collectstatic
 ```
 
-### 3. Create an admin user
+### 4. Create an admin user
 
 ```bash
 uv run manage.py createsuperuser
 ```
 
-### 4. Run the application
+### 5. Run the application
 
 ```bash
 uv run manage.py runserver

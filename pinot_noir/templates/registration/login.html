@@ -11,6 +11,13 @@
         <div class="p-panel__content">
             <div class="row">
                 <div class="col-4 col-medium-3">
+                    {% if google_oauth_failed %}
+                        <div class="p-notification--negative">
+                            <div class="p-notification__content">
+                                <p class="p-notification__message">Google sign-in was not completed or did not match an active Pinot Noir account.</p>
+                            </div>
+                        </div>
+                    {% endif %}
                     <form method="post" action="{% url 'login' %}" class="p-form p-form--stacked">
                         {% csrf_token %}
                         {% if form.non_field_errors %}
@@ -34,6 +41,12 @@
                         <input type="hidden" name="next" value="{{ next }}">
                         <button type="submit" class="p-button--positive">Log in</button>
                     </form>
+                    {% if google_oauth_enabled %}
+                        {% url 'oidc_authentication_init' as google_login_url %}
+                        <hr class="p-rule">
+                        <p>Use the Google account for the email address on your Pinot Noir account.</p>
+                        <a class="p-button" href="{{ google_login_url }}{% if next %}?next={{ next|urlencode }}{% endif %}">Continue with Google</a>
+                    {% endif %}
                 </div>
             </div>
         </div>

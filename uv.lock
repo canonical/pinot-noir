@@ -729,6 +729,21 @@ wheels = [
 ]
 
 [[package]]
+name = "mozilla-django-oidc"
+version = "5.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "django" },
+    { name = "pyjwt" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/04/5e/d5906dc016253d248eabf3608a6bbfd0df75a993a467cf7cf0a0c7f2b18a/mozilla_django_oidc-5.0.2.tar.gz", hash = "sha256:4e953dcd963c036daaa2ac42b5bb6ea89a1c6ea7be0387c2022a59aca2f83043", size = 57360, upload-time = "2025-12-19T16:11:40.685Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/a9/c1664acf30ef0031ed06650039de1693bddf4cf7f58e07939e1aa80bffb7/mozilla_django_oidc-5.0.2-py3-none-any.whl", hash = "sha256:965a3533b0e299288cdf38ec2f8b550217c302ffe78ce5bd0b2d2f4bc436878b", size = 25910, upload-time = "2025-12-19T16:11:39.729Z" },
+]
+
+[[package]]
 name = "multidict"
 version = "7.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -874,6 +889,7 @@ dependencies = [
     { name = "django-tasks" },
     { name = "django-tasks-db" },
     { name = "gunicorn" },
+    { name = "mozilla-django-oidc" },
     { name = "psycopg", extra = ["binary"] },
     { name = "python-debian" },
     { name = "pyyaml" },
@@ -901,6 +917,7 @@ requires-dist = [
     { name = "django-tasks", specifier = ">=0.12.0" },
     { name = "django-tasks-db", specifier = ">=0.12.0" },
     { name = "gunicorn", specifier = ">=23.0.0" },
+    { name = "mozilla-django-oidc", specifier = ">=5.0.2,<6.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "python-debian", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -1149,6 +1166,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyjwt"
+version = "2.15.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/ea/5194e52748b0da83d71e082d75496eaec6e58f419f5e184786ded517e6a9/pyjwt-2.15.1.tar.gz", hash = "sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8", size = 121252, upload-time = "2026-09-28T18:40:42.598Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/ca/44de4e75f8aadc457f0634be3b542815078ded46dca30efb960edeecad6e/pyjwt-2.15.1-py3-none-any.whl", hash = "sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193", size = 33860, upload-time = "2026-09-28T18:40:41.429Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1224,6 +1250,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/da/92/1446574745d74df0c92e6aa4a7b0b3130706a4142b2d1a5869f2eaa423c6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:16249ee61e95f858e83976573de0f5b2893b3677ba71c9dd36b9cf8be9ac6d65", size = 829923, upload-time = "2025-09-25T21:32:54.537Z" },
     { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062, upload-time = "2025-09-25T21:32:55.767Z" },
     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
+]
+
+[[package]]
+name = "requests"
+version = "2.34.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "charset-normalizer" },
+    { name = "idna" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
 ]
 
 [[package]]
@@ -1399,6 +1440,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e4/fc/ee9e2a5a89f6661af6a6d044568d4e72cbbdff50559f1685044842e9d780/ubq-0.5.3.tar.gz", hash = "sha256:f26563c6b2ce0b248c7f9649055755c357792e07a6fee2861d8b6c08b1d80ad0", size = 55380, upload-time = "2026-06-19T18:59:45.657Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1a/df/91ee63b241183341f5b1dcad84c9cd428c937da9e11b6dfd5b9e9ea1d553/ubq-0.5.3-py3-none-any.whl", hash = "sha256:7eddb42efdb76c1c9a94896ccfb6e63cf57bfd1aa920e2cf02a1fa2602039fea", size = 44090, upload-time = "2026-06-19T18:59:44.359Z" },
+]
+
+[[package]]
+name = "urllib3"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/05/b17359e1cefb4f909b5e40b1b90a496d987258916dbbf88e842c729f510e/urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63", size = 458972, upload-time = "2026-09-15T19:29:36.253Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3", size = 135717, upload-time = "2026-09-15T19:29:34.577Z" },
 ]
 
 [[package]]

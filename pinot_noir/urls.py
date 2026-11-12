@@ -31,6 +31,7 @@ urlpatterns = [
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("oidc/", include("mozilla_django_oidc.urls")),
     path("settings/", include("pinot_noir.user_settings.urls")),
     path("manage/", include("pinot_noir.site_admin.urls")),
     path(
