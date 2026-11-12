@@ -4,10 +4,71 @@ from django.urls import reverse
 
 from pinot_noir.data_manager.models import UserTokens
 
+from .models import Preferences
+
 LP = (
     "[1]\nconsumer_key = pinot-noir\nconsumer_secret = \n"
     "access_token = abc\naccess_secret = secret-def\n"
 )
+
+
+class GeneralSettingsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("alice", password="pw")
+        self.client.force_login(self.user)
+        self.url = reverse("user_settings:general")
+
+    def post(self, theme):
+        return self.client.post(self.url, {"theme": theme}, follow=True)
+
+    def test_requires_login(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertEqual(response["Location"], f"{reverse('login')}?next={self.url}")
+
+    def test_general_is_first_section_and_defaults_to_light(self):
+        response = self.client.get(self.url)
+        self.assertEqual(
+            [section["label"] for section in response.context["user_settings_sections"]],
+            ["General", "My tokens"],
+        )
+        self.assertEqual(response.context["form"]["theme"].value(), Preferences.Theme.LIGHT)
+        self.assertContains(response, '<body class="is-light">')
+        self.assertContains(response, "Appearance")
+        self.assertContains(response, "Light")
+        self.assertContains(response, "Dark")
+        self.assertContains(response, 'class="p-radio__input"', count=2)
+
+    def test_dark_and_light_preferences_apply_to_all_pages(self):
+        response = self.post(Preferences.Theme.DARK)
+        self.assertContains(response, "Appearance set to Dark.")
+        self.assertContains(response, '<body class="is-dark">')
+        self.assertEqual(Preferences.objects.get(user=self.user).theme, Preferences.Theme.DARK)
+        response = self.client.get(reverse("merges_schedule:index"))
+        self.assertContains(response, '<body class="is-dark">')
+        self.assertContains(response, "p-icon--user is-light")
+        self.assertContains(response, 'class="p-panel is-dark"', count=2)
+
+        response = self.post(Preferences.Theme.LIGHT)
+        self.assertContains(response, "Appearance set to Light.")
+        self.assertContains(response, '<body class="is-light">')
+        self.assertEqual(Preferences.objects.get(user=self.user).theme, Preferences.Theme.LIGHT)
+        response = self.client.get(reverse("merges_schedule:index"))
+        self.assertContains(response, '<body class="is-light">')
+        self.assertContains(response, "p-icon--user is-light")
+        self.assertContains(response, 'class="p-panel is-dark"', count=2)
+
+    def test_only_changes_own_preferences(self):
+        other = User.objects.create_user("bob")
+        Preferences.objects.create(user=other, theme=Preferences.Theme.LIGHT)
+        self.post(Preferences.Theme.DARK)
+        self.assertEqual(Preferences.objects.get(user=self.user).theme, Preferences.Theme.DARK)
+        self.assertEqual(Preferences.objects.get(user=other).theme, Preferences.Theme.LIGHT)
+
+    def test_rejects_unknown_theme(self):
+        response = self.post("sepia")
+        self.assertContains(response, "Select a valid choice")
+        self.assertFalse(Preferences.objects.filter(user=self.user).exists())
 
 
 class TokensPageTests(TestCase):
@@ -27,9 +88,10 @@ class TokensPageTests(TestCase):
 
     def test_non_staff_user_can_use_settings(self):
         response = self.client.get(reverse("user_settings:index"))
-        self.assertRedirects(response, self.url)
+        self.assertRedirects(response, reverse("user_settings:general"))
         response = self.client.get(self.url)
         self.assertContains(response, "Settings")
+        self.assertContains(response, "General")
         self.assertContains(response, "My tokens")
         self.assertContains(response, "Signed in as alice")
         self.assertContains(response, 'aria-label="User settings sections"')

@@ -14,7 +14,7 @@
 
         {% block includes %}{% endblock %}
     </head>
-    <body>
+    <body class="{% if user_theme == 'dark' %}is-dark{% else %}is-light{% endif %}">
         <div class="l-application" role="presentation">
             <div class="l-navigation-bar">
                 <div class="p-panel is-dark">

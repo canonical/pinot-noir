@@ -3,6 +3,8 @@ from launchpadlib.credentials import Credentials
 
 from pinot_noir.data_manager.models import UserTokens
 
+from .models import Preferences
+
 # (field, label, help text). Help is about what each token is for and what it needs.
 # lp_token is a multi-line credentials file, so it gets a textarea (MULTILINE).
 TOKENS = (
@@ -106,3 +108,10 @@ class TokensForm(forms.Form):
         if changed:
             self.instance.save()
         return changed
+
+
+class PreferencesForm(forms.ModelForm):
+    class Meta:
+        model = Preferences
+        fields = ["theme"]
+        widgets = {"theme": forms.RadioSelect}

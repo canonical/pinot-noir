@@ -5,12 +5,32 @@ from django.views.decorators.http import require_http_methods
 
 from pinot_noir.data_manager.models import UserTokens
 
-from .forms import TokensForm
+from .forms import PreferencesForm, TokensForm
+from .models import Preferences
 
 
 @login_required
 def index(request):
-    return redirect("user_settings:tokens")
+    return redirect("user_settings:general")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def general(request):
+    """Edit general preferences for the signed-in user."""
+    instance = Preferences.objects.filter(user=request.user).first() or Preferences(
+        user=request.user
+    )
+    form = PreferencesForm(request.POST or None, instance=instance)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, f"Appearance set to {Preferences.Theme(instance.theme).label}.")
+        return redirect("user_settings:general")
+    return render(
+        request,
+        "user_settings/general.html",
+        {"title": "General", "form": form},
+    )
 
 
 @login_required

@@ -1,0 +1,23 @@
+{% extends 'user_settings/base.html' %}
+
+{% block settings_content %}
+<p>Choose the Vanilla color scheme used across Pinot Noir.</p>
+<form method="post">
+    {% csrf_token %}
+    <div class="p-form__group p-form-validation u-sv3{% if form.theme.errors %} is-error{% endif %}">
+        <span class="p-form__label" id="theme-label">Appearance</span>
+        <div class="p-form__control" role="radiogroup" aria-labelledby="theme-label">
+            {% for radio in form.theme %}
+                <label class="p-radio" for="{{ radio.id_for_label }}">
+                    <input type="radio" class="p-radio__input" name="theme" value="{{ radio.data.value }}" id="{{ radio.id_for_label }}"{% if radio.data.selected %} checked{% endif %} required>
+                    <span class="p-radio__label">{{ radio.choice_label }}</span>
+                </label>
+            {% endfor %}
+            {% for error in form.theme.errors %}
+                <p class="p-form-validation__message">{{ error }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    <button type="submit" class="p-button--positive">Save settings</button>
+</form>
+{% endblock %}
