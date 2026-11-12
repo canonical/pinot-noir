@@ -3,46 +3,44 @@ Production settings for pinot_noir project.
 
 Reads all sensitive configuration from environment variables.
 Required environment variables:
-  SECRET_KEY     - Django secret key
-  FIELD_ENCRYPTION_KEY - Key used to encrypt sensitive model fields
-  DB_NAME        - PostgreSQL database name
-  DB_USER        - PostgreSQL user
-  DB_PASSWORD    - PostgreSQL password
-  ALLOWED_HOSTS  - Comma-separated list of allowed hostnames
-
-Optional environment variables:
-  DB_HOST        - PostgreSQL host (default: localhost)
-  DB_PORT        - PostgreSQL port (default: 5432)
-  CSRF_TRUSTED_ORIGINS - Comma-separated list of trusted origins (e.g. https://yourdomain.com)
+  DJANGO_SECRET_KEY - Django secret key
+  DJANGO_FIELD_ENCRYPTION_KEY_VALUE - Key used to encrypt sensitive model fields
+  DJANGO_ALLOWED_HOSTS - JSON-encoded list of allowed hostnames
+  DJANGO_BASE_URL - Public base URL, used as the trusted CSRF origin
+  POSTGRESQL_DB_NAME - PostgreSQL database name
+  POSTGRESQL_DB_USERNAME - PostgreSQL user
+  POSTGRESQL_DB_PASSWORD - PostgreSQL password
+  POSTGRESQL_DB_HOSTNAME - PostgreSQL host
+  POSTGRESQL_DB_PORT - PostgreSQL port
 """
 
+import json
 import os
 
 from .base import *
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 # Dedicated key for encrypting sensitive model fields, independent of
 # SECRET_KEY so the latter can be rotated without losing stored secrets.
-FIELD_ENCRYPTION_KEY = os.environ["FIELD_ENCRYPTION_KEY"]
+FIELD_ENCRYPTION_KEY = os.environ["DJANGO_FIELD_ENCRYPTION_KEY_VALUE"]
 
 DEBUG = False
 
-ALLOWED_HOSTS = os.environ["ALLOWED_HOSTS"].split(",")
+ALLOWED_HOSTS = json.loads(os.environ["DJANGO_ALLOWED_HOSTS"])
 
-CSRF_TRUSTED_ORIGINS = os.environ["CSRF_TRUSTED_ORIGINS"].split(",")
+CSRF_TRUSTED_ORIGINS = [os.environ["DJANGO_BASE_URL"]]
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ["DB_NAME"],
-        "USER": os.environ["DB_USER"],
-        "PASSWORD": os.environ["DB_PASSWORD"],
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
+        "NAME": os.environ["POSTGRESQL_DB_NAME"],
+        "USER": os.environ["POSTGRESQL_DB_USERNAME"],
+        "PASSWORD": os.environ["POSTGRESQL_DB_PASSWORD"],
+        "HOST": os.environ["POSTGRESQL_DB_HOSTNAME"],
+        "PORT": os.environ["POSTGRESQL_DB_PORT"],
     }
 }
