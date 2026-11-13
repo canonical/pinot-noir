@@ -2,6 +2,8 @@
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from launchpadlib.credentials import Credentials  # type: ignore[import-untyped]
+from launchpadlib.launchpad import Launchpad  # type: ignore[import-untyped]
 from ubq import QueryService
 from ubq.models import ProviderCredentials
 
@@ -25,19 +27,35 @@ def get_devel_or_requested_release(release_adjective: str | None = None) -> Ubun
     return release
 
 
-def get_launchpad_service_for_user(username: str) -> QueryService:
-    """Return a QueryService logged in to Launchpad with *username*'s stored token."""
+def _get_launchpad_token_for_user(username: str) -> str:
+    """Return *username*'s stored Launchpad token."""
     user = User.objects.get(username=username)
     tokens = UserTokens.objects.filter(user=user).first()
     if tokens is None or not tokens.lp_token:
         raise ObjectDoesNotExist(f"No Launchpad token configured for user '{username}'.")
+    return tokens.lp_token
 
+
+def get_launchpad_service_for_user(username: str) -> QueryService:
+    """Return a QueryService logged in to Launchpad with *username*'s stored token."""
     service = QueryService()
     service.login(
         provider_name="launchpad",
-        credentials=ProviderCredentials(token=tokens.lp_token),
+        credentials=ProviderCredentials(token=_get_launchpad_token_for_user(username)),
     )
     return service
+
+
+def get_launchpad_for_user(username: str) -> Launchpad:
+    """Return the Launchpad API object for writes not yet covered by UBQ."""
+    credentials = Credentials.from_string(_get_launchpad_token_for_user(username))
+    return Launchpad(
+        credentials,
+        None,
+        None,
+        service_root="production",
+        version="devel",
+    )
 
 
 def milestones_for_release(version: str) -> set[str]:

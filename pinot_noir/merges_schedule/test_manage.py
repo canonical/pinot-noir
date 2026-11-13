@@ -11,7 +11,8 @@ from django_tasks_db.models import DBTaskResult
 from pinot_noir.data_manager.models import MergeBugFilterSettings, UserTokens, WeeklyTask
 from pinot_noir.data_manager.tasks import schedule_weekly_tasks, submit_merge_bugs
 
-from .tasks import refresh_merge_schedule
+from .models import Merge
+from .tasks import refresh_merge_schedule, update_schedule_bug_filter
 
 MERGE = MergeBugFilterSettings.TYPE_MERGE
 BACKPORT = MergeBugFilterSettings.TYPE_BACKPORT
@@ -27,16 +28,23 @@ class ManagePageTests(TestCase):
     def post(self, **data):
         return self.client.post(self.url, data, follow=True)
 
-    def add(self, kind, field, value):
-        return self.post(
-            action="filter-add",
-            settings_type=kind,
-            field=field,
-            **{f"{kind}-{field}-value": value},
-        )
+    def add(self, kind, field, value, update=False):
+        data = {
+            "action": "filter-edit",
+            "add_entry": "1",
+            "settings_type": kind,
+            "field": field,
+            f"{kind}-{field}-value": value,
+        }
+        if update:
+            data[f"{kind}-{field}-update_bugs"] = "on"
+        return self.post(**data)
 
-    def remove(self, kind, field, value):
-        return self.post(action="filter-remove", settings_type=kind, field=field, value=value)
+    def remove(self, kind, field, value, update=False):
+        data = {"action": "filter-edit", "settings_type": kind, "field": field, "value": value}
+        if update:
+            data[f"{kind}-{field}-update_bugs"] = "on"
+        return self.post(**data)
 
     def filter_settings(self, kind=MERGE):
         return MergeBugFilterSettings.objects.get(settings_type=kind)
@@ -82,7 +90,17 @@ class ManagePageTests(TestCase):
         for value in ("a-tag", "other", "someone"):
             self.assertContains(response, f'<span class="p-chip__value">{value}</span>', html=True)
             self.assertContains(response, f'name="value" value="{value}"')
+            self.assertContains(
+                response,
+                f'name="value" value="{value}" title="Remove {value}" formnovalidate',
+            )
         self.assertContains(response, "None yet.", 2)  # both backport lists
+        self.assertContains(response, "Also update existing merge bugs on the schedule", 2)
+        self.assertContains(response, "Also update existing backport bugs on the schedule", 2)
+        for field in ("tags", "subscribers"):
+            self.assertContains(response, f'name="merge-{field}-update_bugs"', 1)
+            self.assertContains(response, f'name="backport-{field}-update_bugs"', 1)
+        self.assertContains(response, 'value="filter-edit"', 4)
 
     def test_add_entries_one_at_a_time(self):
         response = self.add(MERGE, "tags", " Merge-Tag ")
@@ -131,6 +149,93 @@ class ManagePageTests(TestCase):
         self.assertContains(self.remove(MERGE, "tags", "nope"), "nope isn&#x27;t in the list.")
         self.assertContains(self.remove("other", "tags", "x"), "Unknown setting.")
         self.assertContains(self.remove(MERGE, "site", "x"), "Unknown setting.")
+
+    def test_existing_bugs_are_not_updated_by_default(self):
+        Merge.objects.create(lp_bug=10, package="pkg")
+        response = self.add(MERGE, "tags", "one")
+        self.assertContains(response, "Added one.")
+        self.assertFalse(
+            DBTaskResult.objects.filter(task_path=update_schedule_bug_filter.module_path).exists()
+        )
+
+    def test_add_can_update_only_existing_bugs_of_the_same_type(self):
+        self.give_token()
+        MergeBugFilterSettings.objects.create(
+            site=Site.objects.get_current(), settings_type=MERGE, tags=["one"]
+        )
+        Merge.objects.create(lp_bug=10, package="merge", merge_type=MERGE)
+        Merge.objects.create(lp_bug=11, package="backport", merge_type=BACKPORT)
+        Merge.objects.create(lp_bug=12, package="sync", merge_type=Merge.TYPE_SYNC)
+
+        response = self.add(MERGE, "tags", "two", update=True)
+
+        self.assertContains(response, "Queued updates for 1 existing merge bug.")
+        result = DBTaskResult.objects.get(task_path=update_schedule_bug_filter.module_path)
+        self.assertEqual(
+            result.args_kwargs["kwargs"],
+            {
+                "username": "alice",
+                "field": "tags",
+                "previous_values": ["one"],
+                "values": ["one", "two"],
+                "bug_ids": [10],
+            },
+        )
+
+    def test_remove_can_update_backport_bug_subscribers(self):
+        self.give_token()
+        MergeBugFilterSettings.objects.create(
+            site=Site.objects.get_current(),
+            settings_type=BACKPORT,
+            tags=["one"],
+            subscribers=["old", "keep"],
+        )
+        Merge.objects.create(lp_bug=20, package="backport", merge_type=BACKPORT)
+
+        response = self.remove(BACKPORT, "subscribers", "old", update=True)
+
+        self.assertContains(response, "Queued updates for 1 existing backport bug.")
+        result = DBTaskResult.objects.get(task_path=update_schedule_bug_filter.module_path)
+        self.assertEqual(
+            result.args_kwargs["kwargs"],
+            {
+                "username": "alice",
+                "field": "subscribers",
+                "previous_values": ["old", "keep"],
+                "values": ["keep"],
+                "bug_ids": [20],
+            },
+        )
+
+    def test_update_requires_token_without_changing_settings(self):
+        MergeBugFilterSettings.objects.create(
+            site=Site.objects.get_current(), settings_type=MERGE, tags=["one"]
+        )
+        Merge.objects.create(lp_bug=10, package="pkg")
+
+        response = self.add(MERGE, "tags", "two", update=True)
+
+        self.assertContains(response, "Add your Launchpad token in My tokens")
+        self.assertEqual(self.filter_settings().tags, ["one"])
+        self.assertFalse(
+            DBTaskResult.objects.filter(task_path=update_schedule_bug_filter.module_path).exists()
+        )
+
+    def test_update_with_no_matching_bugs_does_not_queue_task(self):
+        self.give_token()
+        response = self.add(MERGE, "tags", "one", update=True)
+        self.assertContains(response, "There are no existing merge bugs on the schedule.")
+        self.assertFalse(
+            DBTaskResult.objects.filter(task_path=update_schedule_bug_filter.module_path).exists()
+        )
+
+    def test_update_checkboxes_disabled_without_token(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, "Also update existing merge bugs on the schedule", 2)
+        for page_filter in response.context["filters"]:
+            for filter_list in page_filter["lists"]:
+                checkbox = filter_list["form"].fields["update_bugs"]
+                self.assertTrue(checkbox.widget.attrs["disabled"])
 
     def test_model_rejects_non_lists(self):
         settings = MergeBugFilterSettings(

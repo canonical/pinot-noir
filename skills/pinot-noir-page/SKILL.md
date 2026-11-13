@@ -314,7 +314,9 @@ Settings conventions (Lena's preferences):
 - **Lists:** add and remove one entry at a time, never a single
   comma-separated box.
   - Show each entry as a `p-chip` with a `p-chip__value`. Its
-    `p-chip__dismiss` is a submit button named `value` in a remove form.
+    `p-chip__dismiss` is a submit button named `value` in a remove form. If the
+    add and remove controls share a form with a required add input, give each
+    dismiss button `formnovalidate` so browser validation doesn't block removal.
   - Under the chips, show an "Add <thing>" row: one input in a
     `p-form-validation` div with `flex: 0 1 18rem`, then the button.
   - The row form is flex with `align-items: flex-start`, so an error message
@@ -334,7 +336,9 @@ Settings conventions (Lena's preferences):
 - **Secrets:** never show secrets. Tokens live in Settings > My tokens and show as
   Set/Not set.
 - **Checkboxes:** stack them with `p-checkbox` rather than
-  `p-checkbox--inline`.
+  `p-checkbox--inline`. Use a wrapping `<label class="p-checkbox">` containing
+  an input with `p-checkbox__input` and a span with `p-checkbox__label`; a bare
+  input plus a separate label can render the text without a visible control.
 - **Example text:** no overly specific examples or "e.g." text in the UI.
 
 Tests (`test_manage.py`, see the merges one):
@@ -363,7 +367,8 @@ live in `pinot_noir/user_settings/` at `/settings/`, outside the staff admin.
   `test_pages_registered`'s expected slug list.
 - `tests.py`: view sorting/context tests,
   and the task test patches `get_launchpad_service_for_user` at
-  `pinot_noir.<app>.tasks.get_launchpad_service_for_user`.
+  `pinot_noir.<app>.tasks.get_launchpad_service_for_user`. Invoke a decorated
+  django-task directly with `task.call(...)`; the `Task` wrapper is not callable.
 
 ### 10. Verify
 

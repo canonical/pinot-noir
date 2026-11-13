@@ -1,5 +1,6 @@
 """Background tasks that keep the merge schedule in sync with Launchpad."""
 
+import logging
 from datetime import timedelta
 
 from django.contrib.auth.models import User
@@ -11,6 +12,7 @@ from ubq.errors import RequestTimeoutError
 
 from pinot_noir.data_manager.common import (
     get_devel_or_requested_release,
+    get_launchpad_for_user,
     get_launchpad_service_for_user,
     milestones_for_release,
 )
@@ -25,6 +27,8 @@ from pinot_noir.merges_schedule.sync import MergeData, collect_bugs_for_type, me
 from pinot_noir.pages.models import PageMetadata
 
 SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
+
+logger = logging.getLogger(__name__)
 
 
 def _backport_groups() -> list[tuple[str, set[str]]]:
@@ -187,3 +191,51 @@ def enqueue_all_merge_refreshes(username: str) -> None:
         queue_single_merge_refresh.using(
             run_after=timezone.now() + timedelta(hours=delay_hours),
         ).enqueue(username, bug_id)
+
+
+@task()
+def update_schedule_bug_filter(
+    username: str,
+    field: str,
+    previous_values: list[str],
+    values: list[str],
+    bug_ids: list[int],
+) -> None:
+    """Apply one filter-list edit to the requested schedule bugs in Launchpad.
+
+    Tags and subscribers outside the configured lists are left alone. All
+    desired subscribers are subscribed so bugs that were missing an existing
+    entry are brought up to date as well.
+    """
+    if field not in ("tags", "subscribers"):
+        raise ValueError(f"Unknown bug filter field: {field}")
+    if not bug_ids:
+        return
+
+    launchpad = get_launchpad_for_user(username)
+    people = {}
+    if field == "subscribers":
+        people = {name: launchpad.people[name] for name in set(previous_values) | set(values)}
+
+    removed = set(previous_values) - set(values)
+    failed_ids = []
+    for bug_id in bug_ids:
+        try:
+            bug = launchpad.bugs[str(bug_id)]
+            if field == "tags":
+                updated_tags = sorted((set(bug.tags) - removed) | set(values))
+                if set(bug.tags) != set(updated_tags):
+                    bug.tags = updated_tags
+                    bug.lp_save()
+            else:
+                for name in sorted(removed):
+                    bug.unsubscribe(person=people[name])
+                for name in values:
+                    bug.subscribe(person=people[name])
+        except Exception:
+            logger.exception("Failed to update Launchpad bug %s", bug_id)
+            failed_ids.append(bug_id)
+
+    if failed_ids:
+        failed = ", ".join(str(bug_id) for bug_id in failed_ids)
+        raise RuntimeError(f"Failed to update Launchpad bugs: {failed}")

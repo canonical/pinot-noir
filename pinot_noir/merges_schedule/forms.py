@@ -24,6 +24,7 @@ class FilterEntryForm(forms.Form):
     """Add one tag or subscriber to a bug filter (merge or backport)."""
 
     value = forms.CharField(max_length=100)
+    update_bugs = forms.BooleanField(required=False)
 
     def __init__(self, *args, settings_type: str, field: str, **kwargs):
         self.settings_type = settings_type
@@ -33,6 +34,9 @@ class FilterEntryForm(forms.Form):
         value = self.fields["value"]
         value.label = f"Add {singular}"
         value.widget.attrs.update({"class": "p-form-validation__input", "autocomplete": "off"})
+        update_bugs = self.fields["update_bugs"]
+        update_bugs.label = f"Also update existing {settings_type} bugs on the schedule"
+        update_bugs.widget.attrs["class"] = "p-checkbox__input"
 
     def clean_value(self) -> str:
         value = self.cleaned_data["value"].strip().lower()
