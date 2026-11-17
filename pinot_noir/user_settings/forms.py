@@ -11,27 +11,28 @@ TOKENS = (
     (
         "lp_token",
         "Launchpad",
-        "The contents of a launchpadlib credentials file, starting with [1]. Used for "
-        "every Launchpad query, bug filing and bug triage.",
+        "Launchpad credential file contents, starting with [1]. Used for "
+        "writing data to Launchpad. You can get this using `ppa credentials` "
+        "through the ppa-dev-tools snap.",
     ),
     (
         "github_token",
         "GitHub",
-        "GitHub data for bug triage (issues, pull requests, team members). Any token "
-        "raises the rate limit for public repos. Private repos need Issues and Pull "
-        "requests: Read; team lookups need organization Members: Read.",
+        "GitHub fine-grained personal access token with minimal or private "
+        "repo read permissions for gathering issues, pull requests, team "
+        "members, etc.",
     ),
     (
         "copilot_token",
         "GitHub Copilot",
-        "Bug triage AI with the Copilot provider. A fine-grained token owned by your "
-        "personal account with Copilot Requests: Read. Classic ghp_ tokens are rejected "
-        "by Copilot.",
+        "GitHub fine-grained personal access token with Copilot Chat, "
+        "Copilot Editor Context, and user copilot requests access for LLM use "
+        "with models provided by Copilot.",
     ),
     (
         "openrouter_api_key",
         "OpenRouter",
-        "Bug triage AI with the OpenRouter provider.",
+        "OpenRouter API key for LLM use with models provided by OpenRouter.",
     ),
 )
 
