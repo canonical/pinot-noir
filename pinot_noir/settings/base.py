@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "pinot_noir.merges_schedule",
     "pinot_noir.reviews",
     "pinot_noir.bug_triage",
+    "pinot_noir.bug_housekeeping",
     "pinot_noir.site_admin",
     "pinot_noir.user_settings",
     # Custom collectstatic including Vanilla CSS download

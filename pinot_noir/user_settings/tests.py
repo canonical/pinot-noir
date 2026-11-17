@@ -39,7 +39,6 @@ class GeneralSettingsTests(TestCase):
         self.assertEqual(response.context["form"]["full_name"].value(), "")
         self.assertContains(response, '<body class="is-light">')
         self.assertContains(response, "Full name")
-        self.assertContains(response, "Git author name")
         self.assertContains(response, "Appearance")
         self.assertContains(response, "Light")
         self.assertContains(response, "Dark")

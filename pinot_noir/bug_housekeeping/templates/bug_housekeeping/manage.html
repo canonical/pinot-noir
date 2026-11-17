@@ -1,0 +1,26 @@
+{% extends 'site_admin/base.html' %}
+
+{% block admin_content %}
+<section class="u-sv3" aria-labelledby="settings-heading">
+    <h3 class="p-heading--5" id="settings-heading">Settings</h3>
+    <p class="u-text--muted">Where startriage keeps the saved-bug lists used to compare housekeeping reports. The report uses the default team configured in Bug Triage.</p>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="git-settings">
+        <div style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+            {% for field in form %}
+                <div style="flex: 0 1 28rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                    {% if field.help_text %}<p class="p-form-help-text">{{ field.help_text }}</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <p class="p-form-help-text">The refreshing user's SSH private key is used for Git over SSH. Without a key, updates are committed only to this persistent local checkout.</p>
+        <button type="submit" class="p-button--positive">{% if settings_saved %}Save{% else %}Create settings{% endif %}</button>
+    </form>
+</section>
+{% include 'site_admin/_schedule.html' %}
+{% include 'site_admin/_commands.html' %}
+{% endblock %}

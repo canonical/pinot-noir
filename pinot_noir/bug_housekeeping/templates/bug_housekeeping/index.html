@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}<title>{{ title }}</title>{% endblock %}
+
+{% block content %}
+<main id="main-content" class="l-main">
+    <div class="p-panel">
+        <div class="p-panel__header">
+            <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
+            {% if report %}
+                <div class="p-panel__controls">
+                    <a href="{% url 'bug_housekeeping:report' %}" target="_blank" rel="noopener" class="p-button u-no-margin--bottom" title="Open the interactive startriage HTML report">
+                        <i class="p-icon--external-link"></i> <span>Open HTML</span>
+                    </a>
+                    <a href="{% url 'bug_housekeeping:download' %}" class="p-button u-no-margin--bottom" title="Download the startriage HTML report">
+                        <i class="p-icon--external-link"></i> <span>Save HTML</span>
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        <div class="p-panel__content">
+            <div class="u-fixed-width">
+                {% if report %}
+                    {% if report.failed_sources %}
+                        <div class="p-notification--negative">
+                            <div class="p-notification__content">
+                                <p class="p-notification__message">Fetching failed: {{ report.failed_sources|join:", " }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if report.git_error %}
+                        <div class="p-notification--negative">
+                            <div class="p-notification__content">
+                                <p class="p-notification__message">The report was generated, but the saved-bug Git update failed: {{ report.git_error }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <p class="u-text--muted">
+                        Team {{ report.team }}. Saved bugs: <code>{{ report.saved_bugs_file }}</code>.
+                        {% if report.git_error %}
+                            See the Git error above.
+                        {% elif report.commit_hash %}
+                            Commit <code>{{ report.commit_hash }}</code>{% if report.pushed %}, pushed to the repository{% else %}, kept in the local checkout{% endif %}.
+                        {% elif report.pushed %}
+                            No new commit was needed; earlier local commits were pushed to the repository.
+                        {% else %}
+                            No new commit was needed.
+                        {% endif %}
+                    </p>
+                    <iframe src="{% url 'bug_housekeeping:report' %}" title="Bug Housekeeping startriage report" style="display: block; width: 100%; min-height: 70vh; border: 0; background: #fff; color-scheme: light;"></iframe>
+                {% else %}
+                    <p>Nothing to do.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% if page_meta.last_refreshed_at %}
+            <div class="u-fixed-width">
+                <p class="u-text--muted u-align--right">
+                    Last refreshed <time datetime="{{ page_meta.last_refreshed_at|date:'c' }}" title="{{ page_meta.last_refreshed_at|date:'Y-m-d H:i:s e' }}">{{ page_meta.last_refreshed_at|timesince }} ago</time>.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

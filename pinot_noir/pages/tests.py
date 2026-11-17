@@ -16,7 +16,7 @@ class PageRegistryTests(TestCase):
     def test_pages_registered(self):
         self.assertEqual(
             [p.slug for p in get_pages()],
-            ["merges-schedule", "reviews", "bug-triage"],
+            ["merges-schedule", "reviews", "bug-triage", "bug-housekeeping"],
         )
 
     def test_every_page_loads_and_is_in_nav(self):
