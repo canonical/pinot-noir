@@ -123,7 +123,34 @@ class TokensForm(forms.Form):
 
 
 class PreferencesForm(forms.ModelForm):
+    full_name = forms.CharField(
+        label="Full name",
+        max_length=150,
+        required=False,
+        help_text="Used for git commit authoring.",
+        widget=forms.TextInput(
+            attrs={
+                "class": "p-form-validation__input",
+                "autocomplete": "name",
+                "aria-describedby": "id_full_name-help",
+            }
+        ),
+    )
+
     class Meta:
         model = Preferences
-        fields = ["theme"]
+        fields = ["full_name", "theme"]
         widgets = {"theme": forms.RadioSelect}
+
+    def __init__(self, *args, user, **kwargs):
+        self.user = user
+        initial = dict(kwargs.get("initial") or {})
+        initial.setdefault("full_name", user.first_name)
+        kwargs["initial"] = initial
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        self.user.first_name = self.cleaned_data["full_name"]
+        if commit:
+            self.user.save(update_fields=["first_name"])
+        return super().save(commit=commit)

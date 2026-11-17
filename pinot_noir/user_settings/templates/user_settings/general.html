@@ -1,9 +1,19 @@
 {% extends 'user_settings/base.html' %}
 
 {% block settings_content %}
-<p>Choose the Vanilla color scheme used across Pinot Noir.</p>
+<p>Manage Pinot Noir user settings.</p>
 <form method="post">
     {% csrf_token %}
+    <div class="p-form__group p-form-validation u-sv3{% if form.full_name.errors %} is-error{% endif %}">
+        <label class="p-form__label" for="{{ form.full_name.id_for_label }}">Full name</label>
+        <div class="p-form__control">
+            {{ form.full_name }}
+            {% for error in form.full_name.errors %}
+                <p class="p-form-validation__message">{{ error }}</p>
+            {% endfor %}
+            <p class="p-form-help-text" id="id_full_name-help">{{ form.full_name.help_text }}</p>
+        </div>
+    </div>
     <div class="p-form__group p-form-validation u-sv3{% if form.theme.errors %} is-error{% endif %}">
         <span class="p-form__label" id="theme-label">Appearance</span>
         <div class="p-form__control" role="radiogroup" aria-labelledby="theme-label">

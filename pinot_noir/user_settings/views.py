@@ -21,10 +21,14 @@ def general(request):
     instance = Preferences.objects.filter(user=request.user).first() or Preferences(
         user=request.user
     )
-    form = PreferencesForm(request.POST or None, instance=instance)
+    form = PreferencesForm(request.POST or None, instance=instance, user=request.user)
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, f"Appearance set to {Preferences.Theme(instance.theme).label}.")
+        messages.success(
+            request,
+            f"General settings saved. Appearance set to "
+            f"{Preferences.Theme(instance.theme).label}.",
+        )
         return redirect("user_settings:general")
     return render(
         request,

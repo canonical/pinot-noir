@@ -21,8 +21,8 @@ class GeneralSettingsTests(TestCase):
         self.client.force_login(self.user)
         self.url = reverse("user_settings:general")
 
-    def post(self, theme):
-        return self.client.post(self.url, {"theme": theme}, follow=True)
+    def post(self, theme, full_name=""):
+        return self.client.post(self.url, {"theme": theme, "full_name": full_name}, follow=True)
 
     def test_requires_login(self):
         self.client.logout()
@@ -36,7 +36,10 @@ class GeneralSettingsTests(TestCase):
             ["General", "My tokens"],
         )
         self.assertEqual(response.context["form"]["theme"].value(), Preferences.Theme.LIGHT)
+        self.assertEqual(response.context["form"]["full_name"].value(), "")
         self.assertContains(response, '<body class="is-light">')
+        self.assertContains(response, "Full name")
+        self.assertContains(response, "Git author name")
         self.assertContains(response, "Appearance")
         self.assertContains(response, "Light")
         self.assertContains(response, "Dark")
@@ -61,17 +64,48 @@ class GeneralSettingsTests(TestCase):
         self.assertContains(response, "p-icon--user is-light")
         self.assertContains(response, 'class="p-panel is-dark"', count=2)
 
+    def test_full_name_is_saved_to_user_and_can_be_cleared(self):
+        self.user.first_name = "Alice Old Name"
+        self.user.email = "alice@example.com"
+        self.user.save(update_fields=["first_name", "email"])
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.context["form"]["full_name"].value(), "Alice Old Name")
+
+        response = self.post(Preferences.Theme.DARK, full_name="  Alice New Name  ")
+        self.assertContains(response, "General settings saved.")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "Alice New Name")
+        self.assertEqual(self.user.email, "alice@example.com")
+
+        self.post(Preferences.Theme.LIGHT)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "")
+
     def test_only_changes_own_preferences(self):
-        other = User.objects.create_user("bob")
+        other = User.objects.create_user("bob", first_name="Bob's Name")
         Preferences.objects.create(user=other, theme=Preferences.Theme.LIGHT)
-        self.post(Preferences.Theme.DARK)
+        self.post(Preferences.Theme.DARK, full_name="Alice's Name")
         self.assertEqual(Preferences.objects.get(user=self.user).theme, Preferences.Theme.DARK)
         self.assertEqual(Preferences.objects.get(user=other).theme, Preferences.Theme.LIGHT)
+        other.refresh_from_db()
+        self.assertEqual(other.first_name, "Bob's Name")
 
     def test_rejects_unknown_theme(self):
-        response = self.post("sepia")
+        self.user.first_name = "Alice's Name"
+        self.user.save(update_fields=["first_name"])
+        response = self.post("sepia", full_name="Changed Name")
         self.assertContains(response, "Select a valid choice")
         self.assertFalse(Preferences.objects.filter(user=self.user).exists())
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "Alice's Name")
+
+    def test_full_name_respects_user_field_length_limit(self):
+        response = self.post(Preferences.Theme.LIGHT, full_name="x" * 151)
+        self.assertContains(response, "Ensure this value has at most 150 characters")
+        self.assertFalse(Preferences.objects.filter(user=self.user).exists())
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "")
 
 
 class TokensPageTests(TestCase):
