@@ -184,15 +184,17 @@ def refresh_bug_housekeeping(username: str, team: str | None = None) -> None:
     )
 
     report_date = date.today()
-    saved_bugs_file = f"todo-{report_date.isoformat()}.yaml"
+    saved_bugs_file = f"savebugs/todo-{report_date.isoformat()}.yaml"
     filename = f"todo-{report_date.isoformat()}.html"
     with _git_environment(tokens.ssh_private_key) as env:
         workdir = _prepare_repository(housekeeping, env)
+        savebugs_dir = workdir / "savebugs"
+        savebugs_dir.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="pinot-noir-housekeeping-") as directory:
             html_path = Path(directory) / filename
             persistor = BugPersistor(
                 SaveConfig(
-                    savebugs_dir=workdir,
+                    savebugs_dir=savebugs_dir,
                     override_save=None,
                     override_compare=None,
                     no_save=False,

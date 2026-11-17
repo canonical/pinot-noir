@@ -154,9 +154,11 @@ class RefreshBugHousekeepingTests(TestCase):
         self.assertEqual({source.name for source in opts.sources}, {"launchpad", "github"})
         recent_seconds = (datetime.now(UTC) - opts.recent_since).total_seconds()
         self.assertAlmostEqual(recent_seconds, 6 * 24 * 60 * 60, delta=5)
-        self.assertEqual(output.bug_persistor._save_path.parent, self.workdir)
+        self.assertEqual(output.bug_persistor._save_path.parent, self.workdir / "savebugs")
 
         report = HousekeepingReport.objects.get()
+        self.assertTrue((self.workdir / report.saved_bugs_file).is_file())
+        self.assertFalse((self.workdir / Path(report.saved_bugs_file).name).exists())
         self.assertEqual(report.html, HTML)
         self.assertFalse(report.pushed)
         self.assertTrue(report.commit_hash)
