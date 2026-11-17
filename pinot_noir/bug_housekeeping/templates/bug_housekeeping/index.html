@@ -28,25 +28,29 @@
                             </div>
                         </div>
                     {% endif %}
-                    {% if report.git_error %}
-                        <div class="p-notification--negative">
-                            <div class="p-notification__content">
-                                <p class="p-notification__message">The report was generated, but the saved-bug Git update failed: {{ report.git_error }}</p>
-                            </div>
-                        </div>
-                    {% endif %}
-                    <p class="u-text--muted">
-                        Team {{ report.team }}. Saved bugs: <code>{{ report.saved_bugs_file }}</code>.
+                    {% if user.is_staff %}
                         {% if report.git_error %}
-                            See the Git error above.
-                        {% elif report.commit_hash %}
-                            Commit <code>{{ report.commit_hash }}</code>{% if report.pushed %}, pushed to the repository{% else %}, kept in the local checkout{% endif %}.
-                        {% elif report.pushed %}
-                            No new commit was needed; earlier local commits were pushed to the repository.
-                        {% else %}
-                            No new commit was needed.
+                            <div class="p-notification--negative">
+                                <div class="p-notification__content">
+                                    <p class="p-notification__message">The report was generated, but the saved-bug Git update failed: {{ report.git_error }}</p>
+                                </div>
+                            </div>
                         {% endif %}
-                    </p>
+                        <p class="u-text--muted">
+                            Team {{ report.team }}. Saved bugs: <code>{{ report.saved_bugs_file }}</code>.
+                            {% if report.git_error %}
+                                See the Git error above.
+                            {% elif report.commit_hash %}
+                                Commit <code>{{ report.commit_hash }}</code>{% if report.pushed %}, pushed to the repository{% else %}, kept in the local checkout{% endif %}.
+                            {% elif report.pushed %}
+                                No new commit was needed; earlier local commits were pushed to the repository.
+                            {% else %}
+                                No new commit was needed.
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p class="u-text--muted">Team {{ report.team }}.</p>
+                    {% endif %}
                     <iframe src="{% url 'bug_housekeeping:report' %}" title="Bug Housekeeping startriage report" style="display: block; width: 100%; min-height: 70vh; border: 0; background: #fff; color-scheme: light;"></iframe>
                 {% else %}
                     <p>Nothing to do.</p>

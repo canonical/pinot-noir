@@ -48,7 +48,9 @@ class BugHousekeepingViewTests(TestCase):
         self.assertContains(response, "Save HTML")
         self.assertContains(response, 'src="/bug-housekeeping/report.html"')
         self.assertContains(response, "background: #fff; color-scheme: light;")
-        self.assertContains(response, "kept in the local checkout")
+        self.assertNotContains(response, "kept in the local checkout")
+        self.assertNotContains(response, "todo-2026-11-17.yaml")
+        self.assertNotContains(response, "a" * 40)
 
         raw = self.client.get(reverse("bug_housekeeping:report"))
         self.assertEqual(raw.content.decode(), HTML)
@@ -60,6 +62,29 @@ class BugHousekeepingViewTests(TestCase):
         self.assertEqual(
             download["Content-Disposition"], 'attachment; filename="todo-2026-11-17.html"'
         )
+
+    def test_git_status_is_staff_only(self):
+        HousekeepingReport.objects.create(
+            team="server",
+            html=HTML,
+            filename="todo-2026-11-17.html",
+            saved_bugs_file="todo-2026-11-17.yaml",
+            commit_hash="b" * 40,
+        )
+        self.client.force_login(User.objects.create_user("nonstaff"))
+        response = self.client.get(reverse("bug_housekeeping:index"))
+        self.assertNotContains(response, "Saved bugs:")
+        self.assertNotContains(response, "todo-2026-11-17.yaml")
+        self.assertNotContains(response, "b" * 40)
+        self.assertNotContains(response, "local checkout")
+        self.assertContains(response, "Team server.")
+
+        self.client.force_login(User.objects.create_user("staff", is_staff=True))
+        response = self.client.get(reverse("bug_housekeeping:index"))
+        self.assertContains(response, "Saved bugs:")
+        self.assertContains(response, "todo-2026-11-17.yaml")
+        self.assertContains(response, "b" * 40)
+        self.assertContains(response, "kept in the local checkout")
 
     def test_missing_report_is_404(self):
         self.assertEqual(self.client.get(reverse("bug_housekeeping:report")).status_code, 404)
@@ -185,11 +210,18 @@ class RefreshBugHousekeepingTests(TestCase):
 
         response = self.client.get(reverse("bug_housekeeping:index"))
         self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "saved-bug Git update failed")
+        self.assertNotContains(response, "commit.gpgsign prevented the commit")
+        self.assertContains(response, 'src="/bug-housekeeping/report.html"')
+
+        staff = User.objects.create_user("admin", is_staff=True)
+        self.client.force_login(staff)
+        response = self.client.get(reverse("bug_housekeeping:index"))
         self.assertContains(
             response, "The report was generated, but the saved-bug Git update failed"
         )
         self.assertContains(response, "commit.gpgsign prevented the commit")
-        self.assertContains(response, 'src="/bug-housekeeping/report.html"')
+
         raw = self.client.get(reverse("bug_housekeeping:report"))
         self.assertEqual(raw.content.decode(), HTML)
 
