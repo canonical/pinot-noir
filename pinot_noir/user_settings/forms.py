@@ -38,7 +38,7 @@ TOKENS = (
         "ssh_private_key",
         "SSH private key",
         "SSH private key in OpenSSH format, including the BEGIN and END "
-        " lines. Used for pushing to Git repositories.",
+        "lines. Used for pushing to Git repositories.",
     ),
 )
 
