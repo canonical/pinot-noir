@@ -10,6 +10,9 @@ LP = (
     "[1]\nconsumer_key = pinot-noir\nconsumer_secret = \n"
     "access_token = abc\naccess_secret = secret-def\n"
 )
+SSH_PRIVATE_KEY = (
+    "-----BEGIN OPENSSH PRIVATE KEY-----\nsecret-key\n-----END OPENSSH PRIVATE KEY-----"
+)
 
 
 class GeneralSettingsTests(TestCase):
@@ -113,17 +116,32 @@ class TokensPageTests(TestCase):
         self.assertEqual(self.client.get(response["Location"]).status_code, 200)
 
     def test_never_renders_stored_tokens(self):
-        UserTokens.objects.create(user=self.user, lp_token=LP, github_token="secret-gh")
+        UserTokens.objects.create(
+            user=self.user,
+            lp_token=LP,
+            github_token="secret-gh",
+            ssh_private_key=SSH_PRIVATE_KEY,
+        )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "secret-gh")
         self.assertNotContains(response, "secret-def")
-        self.assertContains(response, '<span class="p-chip__value">Set</span>', count=2)
+        self.assertNotContains(response, "secret-key")
+        self.assertContains(response, '<span class="p-chip__value">Set</span>', count=3)
         self.assertContains(response, '<span class="p-chip__value">Not set</span>', count=2)
+        self.assertContains(response, 'name="ssh_private_key"')
+        self.assertContains(response, "BEGIN and END lines")
 
     def test_sets_tokens_and_creates_row(self):
-        response = self.post(lp_token=LP, github_token="gh", copilot_token="github_pat_x")
-        self.assertContains(response, "Updated: Launchpad, GitHub, GitHub Copilot.")
+        response = self.post(
+            lp_token=LP,
+            github_token="gh",
+            copilot_token="github_pat_x",
+            ssh_private_key=SSH_PRIVATE_KEY,
+        )
+        self.assertContains(
+            response, "Updated: Launchpad, GitHub, GitHub Copilot, SSH private key."
+        )
         tokens = UserTokens.objects.get(user=self.user)
         self.assertEqual(
             (
@@ -131,15 +149,24 @@ class TokensPageTests(TestCase):
                 tokens.github_token,
                 tokens.copilot_token,
                 tokens.openrouter_api_key,
+                tokens.ssh_private_key,
             ),
-            (LP.strip(), "gh", "github_pat_x", ""),
+            (LP.strip(), "gh", "github_pat_x", "", SSH_PRIVATE_KEY),
         )
 
     def test_blank_keeps_and_clear_removes(self):
-        UserTokens.objects.create(user=self.user, github_token="gh", openrouter_api_key="or")
-        self.post(clear_github_token="on")
+        UserTokens.objects.create(
+            user=self.user,
+            github_token="gh",
+            openrouter_api_key="or",
+            ssh_private_key=SSH_PRIVATE_KEY,
+        )
+        self.post(clear_github_token="on", clear_ssh_private_key="on")
         tokens = UserTokens.objects.get(user=self.user)
-        self.assertEqual((tokens.github_token, tokens.openrouter_api_key), ("", "or"))
+        self.assertEqual(
+            (tokens.github_token, tokens.openrouter_api_key, tokens.ssh_private_key),
+            ("", "or", ""),
+        )
 
     def test_only_changes_own_tokens(self):
         other = User.objects.create_user("bob")

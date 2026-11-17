@@ -19,7 +19,7 @@
             </label>
             <div class="p-form__control">
                 {% if row.multiline %}
-                    <textarea class="p-form-validation__input" name="{{ row.field.html_name }}" id="{{ row.field.id_for_label }}" rows="5" autocomplete="off" spellcheck="false" style="font-family: monospace;" placeholder="{% if row.is_set %}Paste new credentials to replace them{% else %}[1]&#10;consumer_key = ...{% endif %}" aria-describedby="{{ row.field.id_for_label }}-help"></textarea>
+                    <textarea class="p-form-validation__input" name="{{ row.field.html_name }}" id="{{ row.field.id_for_label }}" rows="5" autocomplete="off" spellcheck="false" style="font-family: monospace;" placeholder="{% if row.is_set %}Enter a new value to replace it{% else %}{{ row.placeholder }}{% endif %}" aria-describedby="{{ row.field.id_for_label }}-help"></textarea>
                 {% else %}
                     <input type="password" class="p-form-validation__input" name="{{ row.field.html_name }}" id="{{ row.field.id_for_label }}" autocomplete="off" spellcheck="false" placeholder="{% if row.is_set %}Enter a new value to replace it{% else %}Not set{% endif %}" aria-describedby="{{ row.field.id_for_label }}-help">
                 {% endif %}

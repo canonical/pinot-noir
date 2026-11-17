@@ -33,6 +33,9 @@ class UserTokens(models.Model):
     # OpenRouter API key for startriage AI analysis; optional
     openrouter_api_key = EncryptedTextField(blank=True, default="")
 
+    # SSH private key for key-based authentication; optional
+    ssh_private_key = EncryptedTextField(blank=True, default="")
+
 
 class MergeBugPackageInfo(models.Model):
     """Information about a package for creating a merges schedule merge bug."""

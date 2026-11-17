@@ -26,6 +26,7 @@ class UserTokensAdmin(admin.ModelAdmin):
         "masked_github_token",
         "masked_copilot_token",
         "masked_openrouter_api_key",
+        "masked_ssh_private_key",
     )
     search_fields = ("user__username",)
     readonly_fields = ("user",)
@@ -51,6 +52,12 @@ class UserTokensAdmin(admin.ModelAdmin):
     @admin.display(description="openrouter_api_key")
     def masked_openrouter_api_key(self, obj):
         if not obj.openrouter_api_key:
+            return ""
+        return "********"
+
+    @admin.display(description="ssh_private_key")
+    def masked_ssh_private_key(self, obj):
+        if not obj.ssh_private_key:
             return ""
         return "********"
 

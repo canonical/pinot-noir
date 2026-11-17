@@ -34,9 +34,19 @@ TOKENS = (
         "OpenRouter",
         "OpenRouter API key for LLM use with models provided by OpenRouter.",
     ),
+    (
+        "ssh_private_key",
+        "SSH private key",
+        "SSH private key in OpenSSH format, including the BEGIN and END "
+        " lines. Used for pushing to Git repositories.",
+    ),
 )
 
-MULTILINE = {"lp_token"}
+MULTILINE = {"lp_token", "ssh_private_key"}
+MULTILINE_PLACEHOLDERS = {
+    "lp_token": "[1]\nconsumer_key = ...",
+    "ssh_private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\n...",
+}
 
 
 class TokensForm(forms.Form):
@@ -67,6 +77,7 @@ class TokensForm(forms.Form):
                 "clear": self[f"clear_{name}"],
                 "is_set": bool(getattr(self.instance, name)),
                 "multiline": name in MULTILINE,
+                "placeholder": MULTILINE_PLACEHOLDERS.get(name, "Not set"),
             }
             for name, _label, _help in TOKENS
         ]
