@@ -1,27 +1,24 @@
-from urllib.parse import quote
+from dataclasses import replace
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import QueryDict
+from ubq import QueryService
+from ubq.models import BugSubmissionRecord, UserRecord
 
-from pinot_noir.launchpad.models import UbuntuRelease
-
-
-def get_ubuntu_devel_release_name() -> str:
-    """Return the name of the current Ubuntu devel release, or an empty string if not found."""
-
-    devel_release = UbuntuRelease.objects.filter(status=UbuntuRelease.STATUS_DEVEL).first()
-    return devel_release.adjective if devel_release else ""
+from pinot_noir.data_manager.bug_filing import prepare_backport_bug, prepare_merge_bug
+from pinot_noir.data_manager.common import get_devel_or_requested_release
+from pinot_noir.data_manager.models import (
+    BackportBugFilterSettings,
+    BackportBugPackageInfo,
+    MergeBugFilterSettings,
+    MergeBugPackageInfo,
+)
 
 
 class BugSubmission:
-    """Handles bug submission form data from POST requests."""
+    """Prepare one merge or backport bug from the Merge Schedule form."""
 
     def __init__(self, post_data: QueryDict, bug_type: str):
-        """Initialize BugSubmission with form data from POST request.
-
-        Args:
-            bug_type: A string indicating the type of bug to submit
-            post_data: Django request.POST QueryDict containing form data
-        """
         self._bug_type = bug_type
         self._package = post_data.get("package", "").strip()
         self._milestone = post_data.get("milestone", "").strip()
@@ -29,11 +26,7 @@ class BugSubmission:
         self._affected_releases = post_data.getlist("affected_releases")
 
     def to_dict(self) -> dict:
-        """Convert submission data to dictionary.
-
-        Returns:
-            Dictionary representation of the bug submission
-        """
+        """Convert submission data to dictionary."""
         return {
             "package": self._package,
             "milestone": self._milestone,
@@ -43,83 +36,88 @@ class BugSubmission:
         }
 
     def get_package_name(self) -> str:
-        """Get the package name for the bug submission.
-
-        Returns:
-            The package name string
-        """
+        """Get the package name for the bug submission."""
         return self._package
 
-    def get_title(self, cycleName: str) -> str | None:
-        """Generate a bug title based on the submission data.
-
-        Args:
-            cycleName: The name of the current development cycle (e.g. "resolute")
-
-        Returns:
-            A string representing the bug title, or None if the bug type is unrecognized
-        """
-        if cycleName == "":
-            cycleName = "upcoming"
-
-        if self._bug_type == "merge":
-            return f"Merge {self._package} for {cycleName} cycle"
-        elif self._bug_type == "backport":
-            return f"Backport {self._package} for {cycleName} cycle"
-        else:
-            return None
-
     def get_milestone(self) -> str | None:
-        """Get the Launchpad milestone for the bug.
-
-        Returns:
-            The milestone string, or None if not specified
-        """
-        if self._milestone != "":
+        """Get the selected Launchpad milestone, if one was specified."""
+        if self._milestone:
             return f"ubuntu-{self._milestone}"
-
         return None
 
     def get_assignee(self) -> str | None:
-        """Get the Launchpad assignee for the bug.
-
-        Returns:
-            The assignee string, or None if not specified
-        """
-        if self._assignee != "":
-            return self._assignee
-
-        return None
+        """Get the selected Launchpad assignee, if one was specified."""
+        return self._assignee or None
 
     def get_affected_releases(self) -> list[str]:
-        """Get the list of affected Ubuntu releases for a backport bug.
-
-        Returns:
-            A list of release strings, or an empty list if not specified or if not a backport bug
-        """
+        """Get the selected affected releases for a backport bug."""
         if self._bug_type == "backport":
             return self._affected_releases
-
         return []
 
-    def get_full_launchpad_query(self) -> str:
-        """Construct a full query string for Launchpad bug filing based on the submission data.
+    def _prepare_merge(self, service: QueryService) -> BugSubmissionRecord | None:
+        filter_settings = MergeBugFilterSettings.objects.filter(
+            settings_type=MergeBugFilterSettings.TYPE_MERGE
+        ).first()
+        if filter_settings is None:
+            raise ObjectDoesNotExist("No merge bug filter settings found.")
 
-        Returns:
-            A URL-encoded query string to be appended to the Launchpad bug filing URL
-        """
-        query_params = dict()
+        package_settings = MergeBugPackageInfo.objects.filter(package=self._package).first()
+        if package_settings is None:
+            package_settings = MergeBugPackageInfo(package=self._package)
 
-        title = self.get_title(get_ubuntu_devel_release_name())
-        if title:
-            query_params["field.title"] = title
+        return prepare_merge_bug(
+            queryService=service,
+            ubuntu_release=get_devel_or_requested_release(),
+            package_settings=package_settings,
+            filter_settings=filter_settings,
+        )
 
-        milestone = self.get_milestone()
-        if milestone:
-            query_params["field.milestone"] = milestone
+    def _prepare_backport(self) -> BugSubmissionRecord | None:
+        filter_settings = BackportBugFilterSettings.objects.first()
+        if filter_settings is None:
+            raise ObjectDoesNotExist("No backport bug filter settings found.")
 
-        assignee = self.get_assignee()
-        if assignee:
-            query_params["field.assignee"] = assignee
+        package_settings = BackportBugPackageInfo.objects.filter(name=self._package).first()
+        if package_settings is None:
+            package_settings = BackportBugPackageInfo(
+                name=self._package,
+                package_names_combined=self._package,
+            )
 
-        return "&".join(f"{key}={quote(value)}" for key, value in query_params.items())
+        return prepare_backport_bug(
+            ubuntu_release=get_devel_or_requested_release(),
+            package_settings=package_settings,
+            filter_settings=filter_settings,
+        )
+
+    def prepare(self, service: QueryService) -> BugSubmissionRecord | None:
+        """Prepare a bug through the standard merge/backport backend workflow."""
+        if self._bug_type == "merge":
+            submission = self._prepare_merge(service)
+        elif self._bug_type == "backport":
+            submission = self._prepare_backport()
+        else:
+            raise ValueError(f"Unknown bug type '{self._bug_type}'.")
+
+        if submission is None:
+            return None
+
+        return replace(
+            submission,
+            milestone=self.get_milestone() or submission.milestone,
+            assignee=(
+                UserRecord(username=self._assignee) if self._assignee else submission.assignee
+            ),
+        )
+
+    def mark_filed(self) -> None:
+        """Mark a configured package as filed after Launchpad accepts the bug."""
+        if self._bug_type == "merge":
+            MergeBugPackageInfo.objects.filter(package=self._package).update(
+                bug_filed_this_cycle=True
+            )
+        elif self._bug_type == "backport":
+            BackportBugPackageInfo.objects.filter(name=self._package).update(
+                bug_filed_this_cycle=True
+            )

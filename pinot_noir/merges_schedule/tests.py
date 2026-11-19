@@ -1,5 +1,8 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.urls import reverse
+
+from pinot_noir.data_manager.models import UserTokens
 
 from .models import Merge
 from .sync import MergeData
@@ -112,3 +115,44 @@ class SortMergesDefaultTests(TestCase):
         self.assertEqual(
             statuses_for_c, [Merge.STATUS_NEW, Merge.STATUS_STARTED, Merge.STATUS_DONE]
         )
+
+
+class CreateBugAccessTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="alice", password="secret")
+        self.url = reverse("merges_schedule:index")
+
+    def test_anonymous_user_does_not_see_create_bug_controls(self):
+        response = self.client.get(self.url)
+
+        self.assertNotContains(response, ">Create Bug</span>")
+        self.assertNotContains(response, 'id="aside-panel"')
+
+    def test_authenticated_user_without_token_sees_disabled_forms(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, ">Create Bug</span>")
+        self.assertContains(response, 'id="aside-panel"')
+        self.assertContains(response, "<fieldset disabled>", count=2)
+        self.assertContains(response, reverse("user_settings:tokens"))
+
+    def test_authenticated_user_with_token_sees_active_forms(self):
+        UserTokens.objects.create(user=self.user, lp_token="alice-token")
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, ">Create Bug</span>")
+        self.assertNotContains(response, "<fieldset disabled>")
+        self.assertNotContains(response, "Add a Launchpad token in")
+
+    def test_another_users_token_does_not_activate_forms(self):
+        other_user = User.objects.create_user(username="bob")
+        UserTokens.objects.create(user=other_user, lp_token="bob-token")
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "<fieldset disabled>", count=2)

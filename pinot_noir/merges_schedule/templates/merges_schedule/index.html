@@ -56,11 +56,13 @@
                 </div>
             </div>
 
+            {% if user.is_authenticated %}
             <div class="p-panel__controls">
                 <button type="button" class="p-button--positive u-no-margin--bottom js-aside-open" title="Create a new LP bug">
                     <i class="p-icon--plus is-light"></i> <span>Create Bug</span>
                 </button>
             </div>
+            {% endif %}
         </div>
         <div class="p-panel__content">
             <div class="u-fixed-width">
@@ -121,6 +123,7 @@
     </div>
 </main>
 
+{% if user.is_authenticated %}
 <aside class="l-aside is-collapsed" id="aside-panel">
     <div class="p-panel">
         <div class="p-panel__header">
@@ -132,6 +135,15 @@
             </div>
         </div>
         <div class="p-panel__content">
+            {% if not has_launchpad_token %}
+            <div class="p-notification--caution">
+                <div class="p-notification__content">
+                    <p class="p-notification__message">
+                        Add a Launchpad token in <a href="{% url 'user_settings:tokens' %}">My tokens</a> to create bugs.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
             <div class="p-tabs">
                 <div class="p-tabs__list" role="tablist" aria-label="Create LP bug">
                     <div class="p-tabs__item">
@@ -144,6 +156,7 @@
                 <div tabindex="0" role="tabpanel" id="merge-tab-panel" aria-labelledby="merge-tab-button">
                     <form class="p-form p-form--stacked" id="create-merge-form">
                         {% csrf_token %}
+                        <fieldset {% if not has_launchpad_token %}disabled{% endif %}>
                         <div class="p-form__group row">
                             <div class="col-4">
                                 <label for="merge-package" class="p-form__label is-required">Package Name</label>
@@ -193,11 +206,13 @@
                                 <button type="submit" class="p-button--positive u-float-right">Create merge</button>
                             </div>
                         </div>
+                        </fieldset>
                     </form>
                 </div>
                 <div tabindex="0" role="tabpanel" id="backport-tab-panel" aria-labelledby="backport-tab-button" hidden="hidden">
                     <form class="p-form p-form--stacked" id="create-backport-form">
                         {% csrf_token %}
+                        <fieldset {% if not has_launchpad_token %}disabled{% endif %}>
                         <div class="p-form__group row">
                             <div class="col-4">
                                 <label for="backport-package" class="p-form__label is-required">Package Name</label>
@@ -251,27 +266,30 @@
                                     {% for release in ubuntu_releases %}
                                     {% if release.status == "supported" %}
                                     <label class="p-checkbox">
-                                        <input type="checkbox" aria-labelledby="backport-to-{{ release.adjective }}" class="p-checkbox__input" checked="">
+                                        <input type="checkbox" name="affected_releases" value="{{ release.adjective }}" aria-labelledby="backport-to-{{ release.adjective }}" class="p-checkbox__input" checked="">
                                         <span class="p-checkbox__label" id="backport-to-{{ release.adjective }}">{{ release.adjective }}</span>
                                     </label>
                                    {% elif release.status == "esm" %}
                                     <label class="p-checkbox">
-                                        <input type="checkbox" aria-labelledby="backport-to-{{ release.adjective }}" class="p-checkbox__input">
+                                        <input type="checkbox" name="affected_releases" value="{{ release.adjective }}" aria-labelledby="backport-to-{{ release.adjective }}" class="p-checkbox__input">
                                         <span class="p-checkbox__label" id="backport-to-{{ release.adjective }}">{{ release.adjective }}</span>
                                     </label>
                                    {% endif %}
                                    {% endfor %}
                                 </div>
                             </div>
+                        </div>
                         <div class="row">
                             <div class="col-12">
                                 <button type="submit" class="p-button--positive u-float-right">Create backport</button>
                             </div>
                         </div>
+                        </fieldset>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </aside>
+{% endif %}
 {% endblock %}

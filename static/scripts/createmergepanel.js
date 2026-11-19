@@ -28,7 +28,7 @@ function setActiveTab(tab, tabs) {
 }
 
 /**
- * Send form data to the Launchpad link creation API then open as new tab.
+ * Submit form data to the backend then open the created Launchpad bug.
  * @param {HTMLFormElement} form The form with bug data to send.
  * @param {string} bugType The type of bug to create.
  */
@@ -40,7 +40,7 @@ function sendNewBugForm(form, bugType) {
             body: formData,
         }).then(response => {
             if (!response.ok) {
-                console.log('Launchpad bug link generation failed:', response.statusText);
+                console.error('Launchpad bug submission failed:', response.statusText);
             } else {
                 response.text().then(url => {
                     window.open(url, '_blank', 'noopener,noreferrer');
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.activeElement.blur();
     });
 
-    // Go to LP bug creation page on submit.
+    // Submit a bug through the backend and open it on success.
     var createMergeForm = document.getElementById('create-merge-form');
     if (createMergeForm) {
         createMergeForm.addEventListener('submit', function(e) {

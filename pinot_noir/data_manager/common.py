@@ -27,6 +27,14 @@ def get_devel_or_requested_release(release_adjective: str | None = None) -> Ubun
     return release
 
 
+def user_has_launchpad_token(user: User) -> bool:
+    """Return whether an authenticated user has a stored Launchpad token."""
+    return (
+        user.is_authenticated
+        and UserTokens.objects.filter(user=user).exclude(lp_token="").exists()
+    )
+
+
 def _get_launchpad_token_for_user(username: str) -> str:
     """Return *username*'s stored Launchpad token."""
     user = User.objects.get(username=username)

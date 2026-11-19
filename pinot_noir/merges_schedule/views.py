@@ -1,5 +1,6 @@
 from django.shortcuts import render
 
+from pinot_noir.data_manager.common import user_has_launchpad_token
 from pinot_noir.launchpad.models import UbuntuRelease
 from pinot_noir.pages.models import PageMetadata
 
@@ -52,6 +53,7 @@ def index(request):
         "assignees": assignees,
         "statuses": statuses,
         "ubuntu_releases": ubuntu_releases,
+        "has_launchpad_token": user_has_launchpad_token(request.user),
         "page_meta": PageMetadata.objects.filter(slug=PAGE_SLUG).first(),
     }
 
