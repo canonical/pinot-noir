@@ -1,15 +1,19 @@
 """Background tasks that keep the merge schedule in sync with Launchpad."""
 
 import logging
+import re
 from datetime import timedelta
 
+from debian.debian_support import Version
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 from django_tasks import task
 from django_tasks_db.models import DBTaskResult
+from ubq import QueryService
 from ubq.errors import RequestTimeoutError
 
+from pinot_noir.data_manager.bug_filing import MergePackageVersionInfo
 from pinot_noir.data_manager.common import (
     get_devel_or_requested_release,
     get_launchpad_for_user,
@@ -27,6 +31,9 @@ from pinot_noir.merges_schedule.sync import MergeData, collect_bugs_for_type, me
 from pinot_noir.pages.models import PageMetadata
 
 SINGLE_MERGE_REFRESH_INTERVAL_HOURS = 12
+MERGE_BUG_TITLE_RE = re.compile(
+    r"^Merge (?P<package>\S+) (?P<version>\S+) from Debian for (?P<release>\S+) cycle$"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +124,44 @@ def refresh_merge_schedule(username: str, release_adjective: str | None = None) 
     enqueue_all_merge_refreshes(username)
 
 
+def _update_outdated_merge_bug(
+    username: str,
+    bug_id: int,
+    title: str,
+    merge: MergeData,
+    service: QueryService,
+) -> None:
+    """Update an auto-generated new merge bug when its Debian version is outdated."""
+    if merge.status != Merge.STATUS_NEW or merge.merge_type != Merge.TYPE_MERGE:
+        return
+
+    title_match = MERGE_BUG_TITLE_RE.fullmatch(title)
+    if title_match is None:
+        return
+
+    release = get_devel_or_requested_release()
+    if title_match["package"] != merge.package or title_match["release"] != release.adjective:
+        return
+
+    version_info = MergePackageVersionInfo(merge.package, release.adjective, service)
+    version_info.refresh_versions()
+    debian_version = version_info.get_debian_merge_version()
+    title_version = title_match["version"]
+    if not debian_version or title_version == debian_version:
+        return
+
+    try:
+        if Version(title_version) >= Version(debian_version):
+            return
+    except ValueError:
+        return
+
+    bug = get_launchpad_for_user(username).bugs[str(bug_id)]
+    bug.title = f"Merge {merge.package} {debian_version} from Debian for {release.adjective} cycle"
+    bug.description = str(version_info)
+    bug.lp_save()
+
+
 @task()
 def refresh_single_merge(username: str, bug_id: int) -> None:
     """Refresh a single Merge record by its Launchpad bug ID.
@@ -148,6 +193,7 @@ def refresh_single_merge(username: str, bug_id: int) -> None:
         return
 
     upsert_merge(merge)
+    _update_outdated_merge_bug(username, bug_id, full_bug.title, merge, service)
 
 
 @task()
