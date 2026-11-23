@@ -117,7 +117,7 @@ def _filter_post(
 @staff_member_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def index(request: HttpRequest) -> HttpResponse:
-    """Merge Schedule settings, its schedule, and commands to run now."""
+    """Merge Schedule settings and commands to run now."""
     forms = {
         (kind, field): FilterEntryForm(settings_type=kind, field=field)
         for kind, _, _ in FILTERS
@@ -126,7 +126,6 @@ def index(request: HttpRequest) -> HttpResponse:
     if not has_lp_token(request.user):
         for filter_form in forms.values():
             filter_form.fields["update_bugs"].widget.attrs["disabled"] = True
-    schedule_form = None
     action = request.POST.get("action", "")
     if request.method == "POST" and action.startswith("filter-"):
         filter_result = _filter_post(request, forms)
@@ -138,7 +137,6 @@ def index(request: HttpRequest) -> HttpResponse:
         task_result = handle_task_post(request, COMMANDS)
         if isinstance(task_result, HttpResponse):
             return task_result
-        schedule_form = task_result
 
     filters = []
     for kind, heading, noun in FILTERS:
@@ -159,6 +157,6 @@ def index(request: HttpRequest) -> HttpResponse:
         {
             "title": "Merge Schedule",
             "filters": filters,
-            **task_sections(request, COMMANDS, PAGE_SLUG, schedule_form),
+            **task_sections(request, COMMANDS, PAGE_SLUG),
         },
     )

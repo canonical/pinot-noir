@@ -4,12 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from pinot_noir.site_admin.page_tasks import (
-    Command,
-    ScheduleForm,
-    handle_task_post,
-    task_sections,
-)
+from pinot_noir.site_admin.page_tasks import Command, handle_task_post, task_sections
 
 from .apps import PAGE_SLUG
 from .forms import (
@@ -67,7 +62,7 @@ def _save_form(request: HttpRequest, form, message: str) -> HttpResponse | None:
 @staff_member_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def index(request: HttpRequest) -> HttpResponse:
-    """Bug Triage settings (default team, AI), its schedule, and commands to run now."""
+    """Bug Triage settings (default team, AI) and commands to run now."""
     team = default_team()
     ai_instance = StartriageAISettings.objects.first() or StartriageAISettings()
     data = request.POST if request.method == "POST" else None
@@ -83,7 +78,6 @@ def index(request: HttpRequest) -> HttpResponse:
     entry_forms = (
         {field: TeamEntryForm(field=field, team=team) for field in TEAM_LISTS} if team else {}
     )
-    schedule_form: ScheduleForm | None = None
 
     response: HttpResponse | None = None
     if action == "ai-settings":
@@ -100,8 +94,6 @@ def index(request: HttpRequest) -> HttpResponse:
         task_result = handle_task_post(request, COMMANDS)
         if isinstance(task_result, HttpResponse):
             response = task_result
-        else:
-            schedule_form = task_result
     if response is not None:
         return response
 
@@ -132,6 +124,6 @@ def index(request: HttpRequest) -> HttpResponse:
             "ai_form": ai_form,
             "ai_saved": ai_instance.pk is not None,
             "other_teams": StartriageTeam.objects.filter(is_default=False).count(),
-            **task_sections(request, COMMANDS, PAGE_SLUG, schedule_form),
+            **task_sections(request, COMMANDS, PAGE_SLUG),
         },
     )

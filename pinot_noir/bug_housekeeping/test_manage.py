@@ -36,8 +36,10 @@ class BugHousekeepingManageTests(TestCase):
 
     def test_renders_sections(self):
         response = self.client.get(self.url)
-        for heading in ("Settings", "Schedule", "Commands"):
+        for heading in ("Settings", "Commands"):
             self.assertContains(response, heading)
+        self.assertNotContains(response, ">Schedule</h3>")
+        self.assertNotIn("schedule_form", response.context)
         self.assertContains(response, "Create settings")
         self.assertContains(response, "default team configured in Bug Triage")
 
@@ -68,8 +70,6 @@ class BugHousekeepingManageTests(TestCase):
             [command.name for command in response.context["commands"]],
             [refresh_bug_housekeeping.name],
         )
-        choices = [value for value, _ in response.context["schedule_form"].fields["task"].choices]
-        self.assertEqual([choice for choice in choices if choice], [refresh_bug_housekeeping.name])
 
     def test_run_refresh_uses_default_team(self):
         UserTokens.objects.create(user=self.user, lp_token=LP_CREDS)

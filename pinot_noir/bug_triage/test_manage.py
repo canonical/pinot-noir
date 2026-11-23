@@ -53,8 +53,10 @@ class BugTriageManageTests(TestCase):
 
     def test_renders_sections(self):
         response = self.client.get(self.url)
-        for heading in ("Settings", "Default team", "AI analysis", "Schedule", "Commands"):
+        for heading in ("Settings", "Default team", "AI analysis", "Commands"):
             self.assertContains(response, heading)
+        self.assertNotContains(response, ">Schedule</h3>")
+        self.assertNotIn("schedule_form", response.context)
         self.assertContains(response, "Create team")
         self.assertNotContains(response, "Ignored packages")  # lists need a saved team
 
@@ -185,13 +187,11 @@ class BugTriageManageTests(TestCase):
         self.assertContains(response, "Select a valid choice.")
         self.assertFalse(StartriageAISettings.objects.exists())
 
-    # Schedule and commands
+    # Commands
 
     def test_refresh_is_the_only_task(self):
         response = self.client.get(self.url)
         self.assertEqual([c.name for c in response.context["commands"]], [refresh_bug_triage.name])
-        choices = [v for v, _ in response.context["schedule_form"].fields["task"].choices]
-        self.assertEqual([c for c in choices if c], [refresh_bug_triage.name])
 
     def test_run_refresh_uses_default_team(self):
         UserTokens.objects.create(user=self.user, lp_token=LP_CREDS)

@@ -5,12 +5,7 @@ from django.views.decorators.http import require_http_methods
 
 from pinot_noir.site_admin.forms import RoleForm
 from pinot_noir.site_admin.lp_roles import REVIEW_MARKER, Role, handle_role_post, role_tables
-from pinot_noir.site_admin.page_tasks import (
-    Command,
-    ScheduleForm,
-    handle_task_post,
-    task_sections,
-)
+from pinot_noir.site_admin.page_tasks import Command, handle_task_post, task_sections
 
 from .apps import PAGE_SLUG
 from .tasks import refresh_reviews
@@ -28,9 +23,8 @@ COMMANDS = [
 @staff_member_required(login_url="login")
 @require_http_methods(["GET", "POST"])
 def index(request: HttpRequest) -> HttpResponse:
-    """Reviews settings (review markers), its schedule, and commands to run now."""
+    """Reviews settings (review markers) and commands to run now."""
     bound: tuple[Role, RoleForm] | None = None
-    schedule_form: ScheduleForm | None = None
     if request.method == "POST":
         role_result = handle_role_post(request, [REVIEW_MARKER])
         if isinstance(role_result, HttpResponse):
@@ -41,13 +35,12 @@ def index(request: HttpRequest) -> HttpResponse:
             task_result = handle_task_post(request, COMMANDS)
             if isinstance(task_result, HttpResponse):
                 return task_result
-            schedule_form = task_result
     return render(
         request,
         "reviews/manage.html",
         {
             "title": "Reviews",
             "tables": role_tables([REVIEW_MARKER], bound),
-            **task_sections(request, COMMANDS, PAGE_SLUG, schedule_form),
+            **task_sections(request, COMMANDS, PAGE_SLUG),
         },
     )

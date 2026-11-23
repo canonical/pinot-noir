@@ -1,15 +1,11 @@
-from datetime import time, timedelta
-
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
-from django.utils import timezone
 from django_tasks_db.models import DBTaskResult
 
-from pinot_noir.data_manager.models import MergeBugFilterSettings, UserTokens, WeeklyTask
-from pinot_noir.data_manager.tasks import schedule_weekly_tasks, submit_merge_bugs
+from pinot_noir.data_manager.models import MergeBugFilterSettings, UserTokens
 
 from .models import Merge
 from .tasks import refresh_merge_schedule, update_schedule_bug_filter
@@ -77,10 +73,12 @@ class ManagePageTests(TestCase):
         )
         self.assertFalse(pages["is_active"])
 
-    def test_renders_three_sections(self):
+    def test_renders_two_sections(self):
         response = self.client.get(self.url)
-        for heading in ("Settings", "Schedule", "Commands"):
+        for heading in ("Settings", "Commands"):
             self.assertContains(response, f">{heading}</h3>")
+        self.assertNotContains(response, ">Schedule</h3>")
+        self.assertNotIn("schedule_form", response.context)
 
     # Settings
 
@@ -275,84 +273,3 @@ class ManagePageTests(TestCase):
         response = self.post(action="run", task="prune_task_results")
         self.assertContains(response, "Unknown command.")
         self.assertFalse(DBTaskResult.objects.exists())
-
-    # Schedule
-
-    def add_schedule(self, **overrides):
-        data = {
-            "action": "schedule-add",
-            "schedule-task": "submit_merge_bugs",
-            "schedule-time_of_day": "09:30",
-            "schedule-user": str(self.user.pk),
-            "schedule-days": ["monday", "thursday"],
-        }
-        data.update(overrides)
-        return self.post(**data)
-
-    def test_add_schedule(self):
-        response = self.add_schedule()
-        self.assertContains(response, "Scheduled Submit merge bugs.")
-        weekly = WeeklyTask.objects.get()
-        self.assertEqual(
-            (weekly.task, weekly.time_of_day, weekly.user, weekly.enabled),
-            ("submit_merge_bugs", time(9, 30), self.user, True),
-        )
-        self.assertEqual(weekly.active_days_display(), "Monday, Thursday")
-
-    def test_add_schedule_needs_days_and_known_task(self):
-        response = self.add_schedule(**{"schedule-days": []})
-        self.assertContains(response, "This field is required.")
-        self.add_schedule(**{"schedule-task": "prune_task_results"})
-        self.assertFalse(WeeklyTask.objects.exists())
-
-    def test_only_this_pages_tasks_listed(self):
-        WeeklyTask.objects.create(task="refresh_reviews", time_of_day=time(1), user=self.user)
-        WeeklyTask.objects.create(task="submit_merge_bugs", time_of_day=time(2), user=self.user)
-        rows = self.client.get(self.url).context["schedule_rows"]
-        self.assertEqual([row["task"].task for row in rows], ["submit_merge_bugs"])
-
-    def test_flags_users_without_token(self):
-        WeeklyTask.objects.create(task="submit_merge_bugs", time_of_day=time(2), user=self.user)
-        self.assertContains(self.client.get(self.url), "No Launchpad token")
-        self.give_token()
-        self.assertNotContains(self.client.get(self.url), "No Launchpad token")
-
-    def queued_weekly(self, task=submit_merge_bugs):
-        run_at = timezone.now() + timedelta(days=1)
-        task.using(run_after=run_at).enqueue(username="alice")
-        return WeeklyTask.objects.create(
-            task=task.name, time_of_day=time(2), user=self.user, monday=True, next_run=run_at
-        )
-
-    def test_pause_and_resume_cancel_queued_run(self):
-        weekly = self.queued_weekly()
-        response = self.post(action="schedule-pause", id=weekly.pk)
-        self.assertContains(response, "Paused a Submit merge bugs schedule.")
-        weekly.refresh_from_db()
-        self.assertEqual((weekly.enabled, weekly.next_run), (False, None))
-        self.assertFalse(DBTaskResult.objects.exists())
-        self.post(action="schedule-resume", id=weekly.pk)
-        weekly.refresh_from_db()
-        self.assertTrue(weekly.enabled)
-
-    def test_remove_deletes_schedule_and_queued_run(self):
-        weekly = self.queued_weekly()
-        other_run = timezone.now() + timedelta(days=2)
-        submit_merge_bugs.using(run_after=other_run).enqueue(username="alice")
-        response = self.post(action="schedule-remove", id=weekly.pk)
-        self.assertContains(response, "Removed a Submit merge bugs schedule.")
-        self.assertFalse(WeeklyTask.objects.exists())
-        self.assertEqual(
-            list(DBTaskResult.objects.values_list("run_after", flat=True)), [other_run]
-        )
-
-    def test_cannot_touch_other_pages_schedules(self):
-        weekly = WeeklyTask.objects.create(task="refresh_reviews", time_of_day=time(1))
-        response = self.client.post(self.url, {"action": "schedule-remove", "id": weekly.pk})
-        self.assertEqual(response.status_code, 404)
-        self.assertTrue(WeeklyTask.objects.exists())
-
-    def test_scheduler_warning(self):
-        self.assertContains(self.client.get(self.url), "scheduler isn't running")
-        schedule_weekly_tasks.enqueue()
-        self.assertNotContains(self.client.get(self.url), "scheduler isn't running")

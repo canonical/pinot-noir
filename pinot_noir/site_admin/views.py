@@ -11,6 +11,7 @@ from pinot_noir.pages.registry import get_page, get_pages
 
 from .forms import TeamNameForm
 from .lp_roles import TEAM_MEMBER, handle_role_post, role_tables
+from .page_tasks import handle_schedule_post, task_schedule_context
 from .sections import SECTIONS
 
 
@@ -76,6 +77,23 @@ def toggle_page(request: HttpRequest, slug: str) -> JsonResponse:
         meta.enabled = enabled
         meta.save(update_fields=["enabled"])
     return JsonResponse({"slug": slug, "enabled": meta.enabled})
+
+
+@staff_member_required(login_url="login")
+@require_http_methods(["GET", "POST"])
+def task_schedule(request: HttpRequest) -> HttpResponse:
+    """List and create weekly schedules for every registered task."""
+    schedule_form = None
+    if request.method == "POST":
+        result = handle_schedule_post(request)
+        if isinstance(result, HttpResponse):
+            return result
+        schedule_form = result
+    return render(
+        request,
+        "site_admin/task_schedule.html",
+        {"title": "Task Schedule", **task_schedule_context(request, schedule_form)},
+    )
 
 
 @staff_member_required(login_url="login")

@@ -32,8 +32,10 @@ class ReviewsManageTests(TestCase):
         User.objects.create_user("lvoytek")
         ReviewMarker.objects.create(username="ubuntu-server")
         response = self.client.get(self.url)
-        for heading in ("Settings", "Schedule", "Commands", "Review markers"):
+        for heading in ("Settings", "Commands", "Review markers"):
             self.assertContains(response, heading)
+        self.assertNotContains(response, ">Schedule</h3>")
+        self.assertNotIn("schedule_form", response.context)
         (markers,) = response.context["tables"]
         self.assertEqual([u.username for u in markers["users"]], ["ubuntu-server"])
         self.assertNotContains(response, 'name="team-username"')
@@ -82,8 +84,6 @@ class ReviewsManageTests(TestCase):
     def test_refresh_reviews_is_the_only_task(self):
         response = self.client.get(self.url)
         self.assertEqual([c.name for c in response.context["commands"]], [refresh_reviews.name])
-        choices = [value for value, _ in response.context["schedule_form"].fields["task"].choices]
-        self.assertEqual([c for c in choices if c], [refresh_reviews.name])
 
     def test_run_refresh(self):
         UserTokens.objects.create(user=self.user, lp_token=LP_CREDS)
@@ -92,14 +92,3 @@ class ReviewsManageTests(TestCase):
         self.assertContains(response, "Queued: Refresh reviews.")
         result = DBTaskResult.objects.get(task_path=refresh_reviews.module_path)
         self.assertEqual(result.args_kwargs["kwargs"], {"username": "alice"})
-
-    def test_schedule_refresh(self):
-        data = {
-            "action": "schedule-add",
-            "schedule-task": refresh_reviews.name,
-            "schedule-time_of_day": "06:00",
-            "schedule-user": self.user.pk,
-            "schedule-days": ["monday"],
-        }
-        response = self.client.post(self.url, data, follow=True)
-        self.assertContains(response, "Scheduled Refresh reviews.")

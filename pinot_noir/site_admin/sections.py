@@ -13,11 +13,13 @@ class Section:
     label: str
 
 
-# Add new admin subpages here; the first one is the /manage/ landing page.
+# Add general admin subpages here; the first one is the /manage/ landing page.
+# Pages is appended after these so it and its children always stay at the bottom.
 SECTIONS: tuple[Section, ...] = (
     Section("site_admin:team", "My team"),
-    Section("site_admin:pages", "Pages"),
+    Section("site_admin:task-schedule", "Task Schedule"),
 )
+PAGES_SECTION = Section("site_admin:pages", "Pages")
 
 
 def page_admin_url_name(page: Page) -> str:
@@ -28,7 +30,7 @@ def page_admin_url_name(page: Page) -> str:
 def section_entries(current_path: str) -> list[dict]:
     """Side nav entries. Pages that own an admin section are nested under Pages."""
     entries = []
-    for section in SECTIONS:
+    for section in (*SECTIONS, PAGES_SECTION):
         url = reverse(section.url_name)
         entries.append(
             {

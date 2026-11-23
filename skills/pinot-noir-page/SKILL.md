@@ -1,6 +1,6 @@
 ---
 name: pinot-noir-page
-description: "Use when adding a new data page (sidebar entry + table backed by a Launchpad/ubq or third-party-library sync task) to the Pinot Noir Django app. Checklist: AppConfig page declaration (registry drives nav, URLs, PageMetadata, scheduling, refresh_page), model, sync/tasks split, template, the page's /manage/ admin section (Settings, Schedule, Commands), tests, tox."
+description: "Use when adding a new data page (sidebar entry + table backed by a Launchpad/ubq or third-party-library sync task) to the Pinot Noir Django app. Checklist: AppConfig page declaration (registry drives nav, URLs, PageMetadata, scheduling, refresh_page), model, sync/tasks split, template, the page's /manage/ admin section (Settings, Commands), global Task Schedule, tests, tox."
 version: 1.4.0
 author: Lena Voytek
 metadata:
@@ -240,22 +240,22 @@ Nothing to do. Declaring `refresh_task` on the Page:
 Only non-page tasks (pruning, bug submission) are listed by hand, in
 `WeeklyTask.BASE_TASK_CHOICES` and `get_schedulable_tasks()`.
 
-People schedule and run the tasks from the page's admin section (step 8).
+People run tasks from the page's admin section (step 8) and schedule all tasks
+from the global Task Schedule section.
 
 ### 8. Site admin section (`/manage/<slug>/`)
 
 Every page owns a section of the Vanilla site admin (`pinot_noir/site_admin/`),
-which replaces the Django admin for day-to-day use. The section has three
-parts, in this order:
+which replaces the Django admin for day-to-day use. The section has two parts,
+in this order:
 
 1. **Settings**: the page's data collection settings.
-2. **Schedule**: when the backend refresh tasks run.
-3. **Commands**: tasks to run now.
+2. **Commands**: tasks to run now.
 
 `pinot_noir/merges_schedule/` is the reference (`manage_urls.py`,
 `manage_views.py`, `forms.py`, `templates/merges_schedule/manage.html`,
-`test_manage.py`). Schedule and Commands are shared code, so a new page only
-writes its Settings.
+`test_manage.py`). Commands are shared code, so a new page only writes its
+Settings. Weekly scheduling lives in the separate global Task Schedule section.
 
 Wiring:
 
@@ -279,35 +279,32 @@ The view (`manage_views.index`):
   examples. Commands run as the current user and are disabled, with a link to
   My tokens, while that user has no Launchpad token. A task on this list must
   take `username` as a keyword and must be schedulable (in
-  `get_schedulable_tasks()`), or the Schedule form rejects it.
+  `get_schedulable_tasks()`) to appear in the global Task Schedule form.
 - Every form posts a hidden `action`. Handle the page's own settings actions
   first (prefix them, e.g. `filter-add`), then send every other POST to
   `handle_task_post(request, COMMANDS)`. It returns a redirect when it handled
-  the POST, or the bound `ScheduleForm` when adding a schedule failed, which
-  you pass on to `task_sections`.
+  a command, or None for another section's action.
 - Redirect after every successful POST (post/redirect/get) and report the
   result with `django.contrib.messages`. `site_admin/base.html` renders the
   messages.
-- Render the context with `**task_sections(request, COMMANDS, PAGE_SLUG,
-  schedule_form)`, plus `title` and the settings context.
+- Render the context with `**task_sections(request, COMMANDS, PAGE_SLUG)`, plus
+  `title` and the settings context.
 
 The template extends `site_admin/base.html` and fills
 `{% block admin_content %}` with these parts, in order:
 
 - a `<section aria-labelledby="settings-heading">` with an
   `<h3 class="p-heading--5">Settings</h3>`;
-- `{% include 'site_admin/_schedule.html' %}`;
 - `{% include 'site_admin/_commands.html' %}`.
 
-The Schedule and Commands sections come from the shared code and need nothing
-more from the page:
+Commands come from the shared code and need nothing more from the page. Each
+command has a Run button that enqueues the task as the current user.
 
-- Schedule lists the page's WeeklyTask rows, with times in UTC. Rows can be
-  paused, resumed or removed, which also cancels a queued run. There is no
-  in-place edit: remove the row and add a new one. The section warns when the
-  scheduler isn't running and flags users without a Launchpad token.
-- Commands has a Run button per command, which enqueues the task as the
-  current user.
+The global Task Schedule section lists every page and base WeeklyTask row, with
+times in UTC and one creation form offering every schedulable task. Rows can be
+paused, resumed or removed, which also cancels a queued run. There is no
+in-place edit: remove the row and add a new one. The section warns when the
+scheduler isn't running and flags users without a Launchpad token.
 
 Settings conventions (Lena's preferences):
 

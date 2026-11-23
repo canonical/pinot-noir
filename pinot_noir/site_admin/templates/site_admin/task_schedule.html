@@ -1,7 +1,10 @@
+{% extends 'site_admin/base.html' %}
 {% load tz %}
-<section class="u-sv3" aria-labelledby="schedule-heading">
-    <h3 class="p-heading--5" id="schedule-heading">Schedule</h3>
-    <p class="u-text--muted">Run these tasks automatically each week. Each run uses the Launchpad token of the user it runs as.</p>
+
+{% block admin_content %}
+<section class="u-sv3" aria-labelledby="scheduled-tasks-heading">
+    <h3 class="p-heading--5" id="scheduled-tasks-heading">Scheduled tasks</h3>
+    <p class="u-text--muted">Run any task automatically each week. Tasks that use Launchpad run with the Launchpad token of the selected user.</p>
     {% if not scheduler_running %}
         <div class="p-notification--caution">
             <div class="p-notification__content">
@@ -28,7 +31,7 @@
                         <td>{{ row.label }}{% if not row.task.enabled %} <span class="p-chip is-dense is-readonly"><span class="p-chip__value">Paused</span></span>{% endif %}</td>
                         <td>{{ row.task.active_days_display }}</td>
                         <td>{{ row.task.time_of_day|time:"H:i" }}</td>
-                        <td>{{ row.task.user.get_username|default:"Nobody" }}{% if not row.has_token %} <span class="p-chip--negative is-dense is-readonly" title="This user has no Launchpad token, so the task will fail"><span class="p-chip__value">No Launchpad token</span></span>{% endif %}</td>
+                        <td>{{ row.task.user.get_username|default:"Nobody" }}{% if not row.has_token %} <span class="p-chip--negative is-dense is-readonly" title="This user has no Launchpad token, so a task that uses Launchpad will fail"><span class="p-chip__value">No Launchpad token</span></span>{% endif %}</td>
                         <td>{% if row.task.enabled and row.task.next_run %}{{ row.task.next_run|utc|date:"D j M, H:i" }}{% elif row.task.enabled %}<span class="u-text--muted">Not queued yet</span>{% else %}<span class="u-text--muted">Paused</span>{% endif %}</td>
                         <td class="u-align--right" style="white-space: nowrap;">
                             <form method="post" style="display: inline-flex; gap: 0.5rem;">
@@ -49,6 +52,9 @@
     {% else %}
         <p>Nothing is scheduled.</p>
     {% endif %}
+</section>
+<section class="u-sv3" aria-labelledby="add-schedule-heading">
+    <h3 class="p-heading--5" id="add-schedule-heading">Add schedule</h3>
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="schedule-add">
@@ -76,3 +82,4 @@
         <button type="submit" class="p-button--positive"><i class="p-icon--plus is-light"></i> <span>Add schedule</span></button>
     </form>
 </section>
+{% endblock %}
