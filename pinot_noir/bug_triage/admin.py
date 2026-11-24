@@ -18,7 +18,6 @@ class StartriageAISettingsAdmin(admin.ModelAdmin):
                     "model",
                     "openrouter_base_url",
                     "suggest_improvements",
-                    "agent_tools",
                 ),
                 "description": (
                     "AI analysis of Launchpad bugs, as 'startriage triage --ai'. "

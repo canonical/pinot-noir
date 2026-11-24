@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.test import TestCase
 from startriage.ai import BugOutcome
+from startriage.ai.tools import REGISTRY
 from startriage.config import AIConfig, AIConfigError
 from startriage.output import Link, ReportItem
 from startriage.sources.launchpad.triage import LaunchpadTriage
@@ -14,7 +15,6 @@ from startriage.sources.launchpad.triage import LaunchpadTriage
 from pinot_noir.data_manager.models import UserTokens
 from pinot_noir.pages.models import PageMetadata
 
-from .admin import StartriageAISettingsForm
 from .apps import PAGE_SLUG
 from .models import StartriageAISettings, StartriageTeam, TriageItem, TriageReport
 from .sync import BugDetails, build_config
@@ -258,7 +258,6 @@ class RefreshBugTriageTests(TestCase):
             enabled=True,
             provider="copilot",
             model="gpt-5",
-            tools={"fetch_url": True},
             suggest_improvements=True,
         )
         fetch_items.return_value = FetchedTriage()
@@ -268,7 +267,7 @@ class RefreshBugTriageTests(TestCase):
         self.assertEqual(config.ai.model, "gpt-5")
         self.assertEqual(config.ai.github_token, "cp")
         self.assertEqual(config.general.github_token, "gh")
-        self.assertEqual(config.ai.tools, {"fetch_url": True})
+        self.assertEqual(config.ai.tools, {name: True for name in REGISTRY})
         self.assertTrue(config.ai.suggest_improvements)
 
     @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
@@ -321,11 +320,9 @@ class RunAITests(TestCase):
         config = build_config(
             {},
             github_token="gh",
-            ai=AIConfig(
-                model="m",
-                tools={"fetch_url": True, "pkg_versions": False},
-                suggest_improvements=True,
-            ),
+            ai=StartriageAISettings(
+                provider="copilot", model="m", suggest_improvements=True
+            ).to_ai_config(),
         )
         provider = MagicMock()
         result = self._result()
@@ -335,9 +332,7 @@ class RunAITests(TestCase):
         pipeline, payloads = triage_bugs.call_args.args
         self.assertEqual(payloads, [{"number": "1"}])
         self.assertIs(pipeline.provider, provider)
-        self.assertIn("fetch_url", pipeline.tools)
-        self.assertNotIn("pkg_versions", pipeline.tools)
-        self.assertNotIn("fetch_source", pipeline.tools)
+        self.assertEqual(set(pipeline.tools), set(REGISTRY))
         self.assertEqual(pipeline.team, frozenset({"ubuntu-server"}))
         self.assertEqual(pipeline.window, (result.filter.start, result.filter.end))
         self.assertTrue(pipeline.feedback)
@@ -388,28 +383,8 @@ class FetchReportItemsTests(TestCase):
         self.assertIn("**Error:** boom", ai)
 
 
-class AISettingsFormTests(TestCase):
-    def _data(self, tools):
-        return {
-            "enabled": "on",
-            "provider": "copilot",
-            "model": "gpt-5",
-            "openrouter_base_url": "https://openrouter.ai/api/v1",
-            "agent_tools": tools,
-        }
-
-    def test_defaults_are_preselected(self):
-        initial = StartriageAISettingsForm().fields["agent_tools"].initial
-        self.assertIn("lp_get_bug", initial)
-        self.assertNotIn("fetch_url", initial)
-        self.assertNotIn("fetch_source", initial)
-
-    def test_saves_every_tool(self):
-        form = StartriageAISettingsForm(data=self._data(["lp_get_bug", "fetch_url"]))
-        self.assertTrue(form.is_valid(), form.errors)
-        settings = form.save()
-        self.assertTrue(settings.tools["fetch_url"])
-        self.assertTrue(settings.tools["lp_get_bug"])
-        self.assertFalse(settings.tools["pkg_versions"])
-        initial = StartriageAISettingsForm(instance=settings).fields["agent_tools"].initial
-        self.assertEqual(initial, ["lp_get_bug", "fetch_url"])
+class AISettingsTests(TestCase):
+    def test_all_agent_tools_are_enabled(self):
+        settings = StartriageAISettings(provider="copilot", model="gpt-5")
+        config = settings.to_ai_config()
+        self.assertEqual(config.tools, {name: True for name in REGISTRY})

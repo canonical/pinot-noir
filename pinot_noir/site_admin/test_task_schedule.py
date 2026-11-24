@@ -49,10 +49,10 @@ class TaskScheduleTests(TestCase):
         sections = response.context["site_admin_sections"]
         self.assertEqual(
             [section["label"] for section in sections],
-            ["My team", "Task Schedule", "Pages"],
+            ["My team", "Startriage", "Task Schedule", "Pages"],
         )
         self.assertEqual(self.url, "/manage/task-schedule")
-        self.assertTrue(sections[1]["is_active"])
+        self.assertTrue(sections[2]["is_active"])
 
     def test_one_form_offers_every_schedulable_task(self):
         response = self.client.get(self.url)

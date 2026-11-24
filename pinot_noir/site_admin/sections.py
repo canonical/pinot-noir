@@ -17,6 +17,7 @@ class Section:
 # Pages is appended after these so it and its children always stay at the bottom.
 SECTIONS: tuple[Section, ...] = (
     Section("site_admin:team", "My team"),
+    Section("site_admin:startriage", "Startriage"),
     Section("site_admin:task-schedule", "Task Schedule"),
 )
 PAGES_SECTION = Section("site_admin:pages", "Pages")

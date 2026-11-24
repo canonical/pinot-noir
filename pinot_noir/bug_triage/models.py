@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from pydantic import ValidationError as PydanticValidationError
+from startriage.ai.tools import REGISTRY
 from startriage.config import AIConfig, AIProvider, TeamConfig
 
 
@@ -80,6 +81,7 @@ class StartriageAISettings(models.Model):
     Only one row is used. Credentials come from the refreshing user's
     UserTokens: copilot_token for Copilot, openrouter_api_key for OpenRouter.
     Their github_token is only used for GitHub data (config general.github_token).
+    Every registered agent tool is enabled; tool selection is not configurable.
     """
 
     PROVIDER_COPILOT = AIProvider.copilot.value
@@ -96,8 +98,6 @@ class StartriageAISettings(models.Model):
     # Model id passed to the provider as is.
     model = models.CharField(max_length=200)
     openrouter_base_url = models.URLField(default="https://openrouter.ai/api/v1")
-    # startriage ``[ai.tools]``: {tool name: enabled}; null uses each tool's default.
-    tools = models.JSONField(null=True, blank=True)
     # Ask the model what to improve in startriage's triage skills.
     suggest_improvements = models.BooleanField(default=False)
 
@@ -116,7 +116,7 @@ class StartriageAISettings(models.Model):
             github_token=copilot_token or None,
             openrouter_api_key=openrouter_api_key or None,
             openrouter_base_url=self.openrouter_base_url,
-            tools=self.tools,
+            tools={name: True for name in REGISTRY},
             suggest_improvements=self.suggest_improvements,
         )
 

@@ -3,8 +3,6 @@ from dataclasses import dataclass
 
 from django import forms
 from django.core.exceptions import ValidationError
-from startriage.ai.tools import REGISTRY, enabled_tool_names
-from startriage.config import AIConfig
 
 from pinot_noir.site_admin.forms import LP_NAME
 
@@ -14,26 +12,17 @@ INPUT_CLASS = "p-form-validation__input"
 
 
 class StartriageAISettingsForm(forms.ModelForm):
-    """Edits ``tools`` as a checklist of startriage's agent tools."""
-
-    agent_tools = forms.MultipleChoiceField(
-        label="Agent tools",
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-        choices=[
-            (name, f"{name} ({tool.risk}): {tool.summary}") for name, tool in REGISTRY.items()
-        ],
-        help_text=(
-            "As 'startriage config ai-tools'. Tools marked exec run programs on the worker: "
-            "fetch_source needs pull-lp-source (ubuntu-dev-tools), patch_applies needs patch. "
-            "grep_source and read_source_file need fetch_source. "
-            "A phase whose tools are all off is skipped."
-        ),
-    )
+    """Edit startriage's AI provider and analysis settings."""
 
     class Meta:
         model = StartriageAISettings
-        exclude = ("tools",)
+        fields = (
+            "enabled",
+            "provider",
+            "model",
+            "openrouter_base_url",
+            "suggest_improvements",
+        )
         labels = {
             "enabled": "Run AI analysis on refreshes",
             "openrouter_base_url": "OpenRouter base URL",
@@ -48,16 +37,8 @@ class StartriageAISettingsForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["agent_tools"].initial = enabled_tool_names(
-            AIConfig(tools=self.instance.tools)
-        )
         for name in ("provider", "model", "openrouter_base_url"):
             self.fields[name].widget.attrs["class"] = INPUT_CLASS
-
-    def save(self, commit=True):
-        chosen = set(self.cleaned_data["agent_tools"])
-        self.instance.tools = {name: name in chosen for name in REGISTRY}
-        return super().save(commit)
 
 
 def default_team() -> StartriageTeam | None:

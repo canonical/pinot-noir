@@ -3,7 +3,7 @@
 {% block admin_content %}
 <section class="u-sv3" aria-labelledby="settings-heading">
     <h3 class="p-heading--5" id="settings-heading">Settings</h3>
-    <p class="u-text--muted">Where startriage keeps the saved-bug lists used to compare housekeeping reports. The report uses the default team configured in Bug Triage.</p>
+    <p class="u-text--muted">Where startriage keeps the saved-bug lists used to compare housekeeping reports. The report uses the default team configured in Startriage.</p>
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="git-settings">

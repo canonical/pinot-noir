@@ -15,6 +15,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     ),
     path("pages", views.pages, name="pages"),
     path("pages/<slug:slug>/toggle", views.toggle_page, name="toggle-page"),
+    path("startriage", views.startriage, name="startriage"),
     path("task-schedule", views.task_schedule, name="task-schedule"),
     path("team", views.team, name="team"),
 ]

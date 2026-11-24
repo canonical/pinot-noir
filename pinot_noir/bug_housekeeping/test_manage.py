@@ -41,7 +41,7 @@ class BugHousekeepingManageTests(TestCase):
         self.assertNotContains(response, ">Schedule</h3>")
         self.assertNotIn("schedule_form", response.context)
         self.assertContains(response, "Create settings")
-        self.assertContains(response, "default team configured in Bug Triage")
+        self.assertContains(response, "default team configured in Startriage")
 
     def test_create_and_edit_git_settings(self):
         response = self.post(**self.settings_data())
