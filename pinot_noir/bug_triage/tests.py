@@ -6,24 +6,53 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.test import TestCase
+from django.urls import reverse
 from startriage.ai import BugOutcome
 from startriage.ai.tools import REGISTRY
 from startriage.config import AIConfig, AIConfigError
-from startriage.output import Link, ReportItem
+from startriage.output import FailedTriageResult, Link, ReportItem
+from startriage.source import TaskFilterOptions
 from startriage.sources.launchpad.triage import LaunchpadTriage
 
 from pinot_noir.data_manager.models import UserTokens
 from pinot_noir.pages.models import PageMetadata
 
 from .apps import PAGE_SLUG
-from .models import StartriageAISettings, StartriageTeam, TriageItem, TriageReport
-from .sync import BugDetails, build_config
-from .tasks import FetchedTriage, _fetch_report_items, _run_ai, refresh_bug_triage
+from .models import StartriageAISettings, StartriageTeam, TriageReport
+from .sync import build_config
+from .tasks import FetchedTriage, _fetch_report, _run_ai, refresh_bug_triage
+
+HTML = "<!doctype html><title>Triage</title><p>startriage report</p>"
 
 
 def _team(**kwargs) -> StartriageTeam:
     defaults = {"name": "server", "lp_team": "ubuntu-server", "lp_todo_tag": "server-todo"}
     return StartriageTeam.objects.create(**{**defaults, **kwargs})
+
+
+def _report(**kwargs) -> TriageReport:
+    defaults = {
+        "team": "server",
+        "start": datetime(2026, 10, 20, tzinfo=UTC),
+        "end": datetime(2026, 10, 21, tzinfo=UTC),
+        "html": HTML,
+        "markdown": "# Triage of changes on 2026-10-20\n",
+        "markdown_filename": "triage-2026-10-20.md",
+    }
+    return TriageReport.objects.create(**{**defaults, **kwargs})
+
+
+def _opts() -> TaskFilterOptions:
+    start = datetime(2026, 10, 19, tzinfo=UTC)
+    end = datetime(2026, 10, 20, tzinfo=UTC)
+    return TaskFilterOptions(
+        team="server",
+        start=start,
+        end=end,
+        recent_since=start,
+        old_since=start,
+        sources=frozenset(),
+    )
 
 
 class StartriageTeamTests(TestCase):
@@ -56,128 +85,45 @@ class StartriageTeamTests(TestCase):
 
 class BugTriageIndexTests(TestCase):
     def test_empty_page_loads(self):
-        response = self.client.get("/bug-triage")
+        response = self.client.get(reverse("bug_triage:index"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Nothing to do.")
+        self.assertNotContains(response, "<iframe")
 
-    def test_sections_render(self):
-        TriageItem.objects.create(
-            source="github",
-            key="g1",
-            section="GitHub",
-            section_order=1,
-            label="pollen#1",
-            url="https://gh/1",
-            title="gh issue",
-            context=[["canonical/pollen", "https://gh"]],
-        )
-        TriageItem.objects.create(
-            source="launchpad",
-            key="1",
-            section="Launchpad",
-            section_order=0,
-            label="LP: #1",
-            url="https://lp/1",
-            title="lp bug",
-            releases=[["D", "open"]],
-            chips=["reply pending"],
-        )
-        response = self.client.get("/bug-triage")
-        sections = response.context["sections"]
-        self.assertEqual([s["name"] for s in sections], ["Launchpad", "GitHub"])
-        self.assertEqual([s["context_label"] for s in sections], ["Package", "Repo"])
-        self.assertContains(response, "reply pending")
+    def test_report_is_embedded_and_downloadable(self):
+        _report(failed_sources=["discourse"])
+        response = self.client.get(reverse("bug_triage:index"))
+        self.assertContains(response, "Open HTML")
+        self.assertContains(response, "Save HTML")
+        self.assertNotContains(response, "Save full Markdown")
+        self.assertContains(response, 'src="/bug-triage/report.html"')
+        self.assertContains(response, "background: #fff; color-scheme: light;")
+        self.assertContains(response, "Fetching failed: discourse")
+        self.assertNotContains(response, "triagenotes.js")
 
-    def test_notes_and_markdown_export(self):
-        TriageReport.objects.create(
-            team="server",
-            title="Triage 2026-10-20",
-            start=datetime(2026, 10, 20, tzinfo=UTC),
-            end=datetime(2026, 10, 21, tzinfo=UTC),
-            markdown="# Triage of changes on 2026-10-20\n</script>",
-            markdown_filename="triage-2026-10-20.md",
-        )
-        TriageItem.objects.create(
-            source="launchpad", key="7", section="Launchpad", label="LP: #7", url="https://lp/7"
-        )
-        response = self.client.get("/bug-triage")
-        self.assertContains(response, 'id="triage-markdown"')
-        # json_script escapes "<", so the template can't end the script element
-        self.assertContains(response, "\\u003C/script\\u003E")
-        self.assertContains(response, 'data-filename="triage-2026-10-20.md"')
-        self.assertContains(response, 'data-report-id="Triage 2026-10-20 ')
-        self.assertContains(response, 'data-url="https://lp/7" data-label="LP: #7"')
-        self.assertContains(response, 'id="launchpad-7-note" class="js-triage-note"')
+        raw = self.client.get(reverse("bug_triage:report"))
+        self.assertEqual(raw.content.decode(), HTML)
+        self.assertEqual(raw["Content-Type"], "text/html; charset=utf-8")
+        self.assertIn("frame-ancestors 'self'", raw["Content-Security-Policy"])
+        self.assertEqual(raw["X-Content-Type-Options"], "nosniff")
 
-    def test_details_dropdown(self):
-        TriageItem.objects.create(
-            source="launchpad",
-            key="7",
-            section="Launchpad",
-            label="LP: #7",
-            url="https://lp/7",
-            title="lp bug",
-            description="Steps to reproduce",
-            ai_result={
-                "bug": "7",
-                "status": "Triaged",
-                "tags": ["regression"],
-                "importance": "High",
-                "series": {"noble": "Triaged"},
-                "duplicate_of": "#123",
-                "analysis": "Caused by the new default.",
-                "suggested_comment": "Thanks for the report.",
-                "proposed_fix": {"kind": "diff", "value": "--- a/x\n+++ b/x"},
-                "fix_applies": {"noble": "applies"},
-                "references": ["https://example.com/fix"],
-                "sru_candidates": [{"series": "noble", "reason": "regression"}],
-                "upstream_suggestion": "",
-            },
-            ai_route="triage",
-            ai_phases=[
-                {
-                    "phase": "triage",
-                    "state": "done",
-                    "summary": "read the bug",
-                    "tools": "lp_get_bug x2",
-                    "sessions": 1,
-                    "input_tokens": 10,
-                    "output_tokens": 5,
-                    "feedback": "more examples",
-                }
-            ],
+        download = self.client.get(reverse("bug_triage:download"))
+        self.assertEqual(download.content.decode(), HTML)
+        self.assertEqual(
+            download["Content-Disposition"], 'attachment; filename="triage-2026-10-20.html"'
         )
-        TriageItem.objects.create(
-            source="launchpad",
-            key="8",
-            section="Launchpad",
-            label="LP: #8",
-            url="https://lp/8",
-            title="skipped bug",
-            ai_route="skip-recent",
-            ai_note="Team replied recently.",
-        )
-        TriageItem.objects.create(
-            source="github", key="g", section="GitHub", label="g", url="https://g", title="t"
-        )
-        response = self.client.get("/bug-triage")
-        self.assertContains(response, '<li class="p-list__item" id="launchpad-7" ')
-        self.assertContains(response, "<summary>")
-        self.assertContains(response, "Steps to reproduce")
-        self.assertContains(response, "Caused by the new default.")
-        self.assertContains(response, "regression")
-        self.assertContains(response, "--- a/x")
-        self.assertContains(response, 'href="https://example.com/fix"')
-        self.assertContains(response, "<th>Suggested importance</th><td>High</td>")
-        self.assertContains(response, "noble: Triaged")
-        self.assertContains(response, 'href="https://bugs.launchpad.net/bugs/123">LP: #123</a>')
-        self.assertContains(response, "Thanks for the report.")
-        self.assertContains(response, "noble: regression")
-        self.assertContains(response, "tools: lp_get_bug x2; 10 in / 5 out tokens")
-        self.assertContains(response, "more examples")
-        self.assertContains(response, "Not triaged by AI: Team replied recently.")
-        self.assertContains(response, "No description available.")
-        self.assertContains(response, "Not analysed.")
+
+    def test_legacy_report_without_html_needs_a_refresh(self):
+        _report(html="")
+        response = self.client.get(reverse("bug_triage:index"))
+        self.assertContains(response, "Nothing to do.")
+        self.assertNotContains(response, "<iframe")
+        self.assertEqual(self.client.get(reverse("bug_triage:report")).status_code, 404)
+        self.assertEqual(self.client.get(reverse("bug_triage:download")).status_code, 404)
+
+    def test_missing_report_is_404(self):
+        self.assertEqual(self.client.get(reverse("bug_triage:report")).status_code, 404)
+        self.assertEqual(self.client.get(reverse("bug_triage:download")).status_code, 404)
 
 
 class RefreshBugTriageTests(TestCase):
@@ -188,81 +134,50 @@ class RefreshBugTriageTests(TestCase):
         )
         _team()
 
-    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
-    def test_replaces_rows(self, fetch_items):
-        TriageItem.objects.create(
-            source="launchpad",
-            key="old",
-            section="Launchpad",
-            label="old",
-            url="https://x",
-            title="old",
-        )
-        fetch_items.return_value = FetchedTriage(
-            [
-                ReportItem(
-                    source="launchpad",
-                    key="2",
-                    label="LP: #2",
-                    url="https://lp/2",
-                    title="bug",
-                    context=[Link("pkg", "https://lp/pkg")],
-                    updated=datetime(2026, 10, 18, tzinfo=UTC),
-                )
-            ],
-            ["discourse"],
-            {"2": BugDetails(description="it broke", ai_error="provider error: boom")},
-            "# Triage of changes on 2026-10-20\n",
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_replaces_report(self, fetch_report):
+        _report(html="old report", markdown="old markdown")
+        fetch_report.return_value = FetchedTriage(
+            html="new startriage html",
+            failed=["discourse"],
+            markdown="# Triage of changes on 2026-10-20\n",
         )
 
         refresh_bug_triage.call(username="alice", triage_day="tuesday")
 
-        config, opts, ai_provider = fetch_items.call_args.args
+        config, opts, ai_provider = fetch_report.call_args.args
         self.assertIsNone(ai_provider)
-        item = TriageItem.objects.get()
-        self.assertEqual(item.description, "it broke")
-        self.assertEqual(item.ai_error, "provider error: boom")
         self.assertEqual(config.general.github_token, "gh")
         self.assertEqual(opts.team, "server")
-        self.assertEqual(list(TriageItem.objects.values_list("key", flat=True)), ["2"])
         report = TriageReport.objects.get()
+        self.assertEqual(report.html, "new startriage html")
         self.assertEqual(report.failed_sources, ["discourse"])
-        self.assertTrue(report.title.startswith("Triage "))
         self.assertEqual(report.markdown, "# Triage of changes on 2026-10-20\n")
         self.assertRegex(report.markdown_filename, r"^triage-\d{4}-\d{2}-\d{2}\.md$")
-        self.assertEqual(
-            fetch_items.call_args.kwargs["markdown_range"], report.title.removeprefix("Triage")
-        )
+        self.assertEqual(report.html_filename, report.markdown_filename[:-3] + ".html")
         self.assertIsNotNone(PageMetadata.objects.get(slug=PAGE_SLUG).last_refreshed_at)
 
-    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
-    def test_all_sources_failed_keeps_rows(self, fetch_items):
-        TriageItem.objects.create(
-            source="launchpad",
-            key="old",
-            section="Launchpad",
-            label="old",
-            url="https://x",
-            title="old",
-        )
-        fetch_items.return_value = FetchedTriage(
-            failed=["discourse", "github", "launchpad", "proposed"]
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_all_sources_failed_keeps_report(self, fetch_report):
+        _report(html="old report")
+        fetch_report.return_value = FetchedTriage(
+            html="failed", failed=["discourse", "github", "launchpad", "proposed"]
         )
         with self.assertRaises(RuntimeError):
             refresh_bug_triage.call(username="alice", triage_day="tuesday")
-        self.assertTrue(TriageItem.objects.filter(key="old").exists())
+        self.assertEqual(TriageReport.objects.get().html, "old report")
 
-    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
-    def test_ai_uses_settings_and_user_token(self, fetch_items):
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_ai_uses_settings_and_user_token(self, fetch_report):
         StartriageAISettings.objects.create(
             enabled=True,
             provider="copilot",
             model="gpt-5",
             suggest_improvements=True,
         )
-        fetch_items.return_value = FetchedTriage()
+        fetch_report.return_value = FetchedTriage()
         refresh_bug_triage.call(username="alice", triage_day="tuesday")
-        config, _opts, ai_provider = fetch_items.call_args.args
+        config, _opts, ai_provider = fetch_report.call_args.args
         self.assertIsNotNone(ai_provider)
         self.assertEqual(config.ai.model, "gpt-5")
         self.assertEqual(config.ai.github_token, "cp")
@@ -270,31 +185,31 @@ class RefreshBugTriageTests(TestCase):
         self.assertEqual(config.ai.tools, {name: True for name in REGISTRY})
         self.assertTrue(config.ai.suggest_improvements)
 
-    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
-    def test_ai_disabled_setting_can_be_overridden(self, fetch_items):
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_ai_disabled_setting_can_be_overridden(self, fetch_report):
         StartriageAISettings.objects.create(enabled=False, provider="copilot", model="gpt-5")
-        fetch_items.return_value = FetchedTriage()
+        fetch_report.return_value = FetchedTriage()
         refresh_bug_triage.call(username="alice", triage_day="tuesday")
-        self.assertIsNone(fetch_items.call_args.args[2])
+        self.assertIsNone(fetch_report.call_args.args[2])
         refresh_bug_triage.call(username="alice", triage_day="tuesday", ai=True)
-        self.assertIsNotNone(fetch_items.call_args.args[2])
+        self.assertIsNotNone(fetch_report.call_args.args[2])
 
-    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
-    def test_ai_without_credentials_fails_before_fetch(self, fetch_items):
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_ai_without_credentials_fails_before_fetch(self, fetch_report):
         StartriageAISettings.objects.create(enabled=True, provider="openrouter", model="m")
         with self.assertRaises(AIConfigError):
             refresh_bug_triage.call(username="alice", triage_day="tuesday")
-        fetch_items.assert_not_called()
+        fetch_report.assert_not_called()
 
     @patch("pinot_noir.bug_triage.tasks.build_provider")
-    @patch("pinot_noir.bug_triage.tasks._fetch_report_items", new_callable=AsyncMock)
-    def test_copilot_does_not_use_github_token(self, fetch_items, build_provider):
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_copilot_does_not_use_github_token(self, fetch_report, build_provider):
         self.tokens.copilot_token = ""
         self.tokens.save()
         StartriageAISettings.objects.create(enabled=True, provider="copilot", model="gpt-5")
-        fetch_items.return_value = FetchedTriage()
+        fetch_report.return_value = FetchedTriage()
         refresh_bug_triage.call(username="alice", triage_day="tuesday")
-        config = fetch_items.call_args.args[0]
+        config = fetch_report.call_args.args[0]
         self.assertIsNone(config.ai.github_token)
         self.assertEqual(config.general.github_token, "gh")
 
@@ -347,40 +262,58 @@ class RunAITests(TestCase):
         triage_bugs.assert_not_called()
 
 
-@patch("pinot_noir.bug_triage.tasks._launchpad_tasks", return_value=[])
-@patch(
-    "pinot_noir.bug_triage.tasks.startriage_report._triage_markdown",
-    new_callable=AsyncMock,
-    return_value="# Triage of changes on 2026-10-19\n\n## Launchpad\n",
-)
-@patch("pinot_noir.bug_triage.tasks.fetch", new_callable=AsyncMock)
-class FetchReportItemsTests(TestCase):
+@patch("pinot_noir.bug_triage.tasks.startriage_report.fetch", new_callable=AsyncMock)
+class FetchReportTests(TestCase):
     def _launchpad(self):
         result = MagicMock(spec=LaunchpadTriage)
         result.error = None
-        result.report_items = AsyncMock(return_value=[])
+        result.to_dict = AsyncMock(return_value={})
+        result.report_items = AsyncMock(
+            return_value=[
+                ReportItem(
+                    source="launchpad",
+                    key="1",
+                    label="LP: #1",
+                    url="https://lp/1",
+                    title="bug",
+                    context=[Link("pkg", "https://lp/pkg")],
+                )
+            ]
+        )
+
+        async def print_section(output):
+            output.out.write("## Launchpad\n\n#### [LP: #1](https://lp/1) — bug\n")
+
+        result.print_section = AsyncMock(side_effect=print_section)
         return result
 
-    def test_markdown_is_startriage_report(self, fetch, triage_markdown, _tasks):
+    def test_startriage_generates_html_and_markdown(self, fetch):
         fetch.return_value = {"launchpad": self._launchpad()}
-        config = build_config({}, ai=AIConfig(model="m"))
-        fetched = asyncio.run(
-            _fetch_report_items(config, MagicMock(), markdown_range=" 2026-10-19")
-        )
-        self.assertEqual(fetched.markdown, "# Triage of changes on 2026-10-19\n\n## Launchpad\n")
-        self.assertEqual(triage_markdown.call_args.args[1], " 2026-10-19")
+        fetched = asyncio.run(_fetch_report(build_config({}), _opts()))
+        self.assertIn("<title>Triage 2026-10-19</title>", fetched.html)
+        self.assertIn('id="launchpad-1"', fetched.html)
+        self.assertIn('var PREFIX = "startriage:"', fetched.html)
+        self.assertIn("triage-2026-10-19.md", fetched.html)
+        self.assertIn("## Launchpad", fetched.markdown)
+        self.assertEqual(fetched.failed, [])
 
     @patch("pinot_noir.bug_triage.tasks._run_ai", new_callable=AsyncMock)
-    def test_ai_report_is_appended(self, run_ai, fetch, _triage_markdown, _tasks):
+    def test_ai_report_is_appended_to_markdown(self, run_ai, fetch):
         fetch.return_value = {"launchpad": self._launchpad()}
         run_ai.return_value = [BugOutcome(bug="5", error="boom")]
-        config = build_config({}, ai=AIConfig(model="m"))
-        fetched = asyncio.run(_fetch_report_items(config, MagicMock(), MagicMock()))
+        fetched = asyncio.run(_fetch_report(build_config({}), _opts(), MagicMock()))
         human, _, ai = fetched.markdown.partition("\n\n---\n\n")
-        self.assertEqual(human, "# Triage of changes on 2026-10-19\n\n## Launchpad\n")
+        self.assertIn("## Launchpad", human)
         self.assertIn("AI-generated triage aid", ai)
         self.assertIn("## LP #5 — triage failed", ai)
         self.assertIn("**Error:** boom", ai)
+        self.assertNotIn("AI-generated triage aid", fetched.html)
+
+    def test_failed_sources_are_in_startriage_html(self, fetch):
+        fetch.return_value = {"launchpad": FailedTriageResult("down")}
+        fetched = asyncio.run(_fetch_report(build_config({}), _opts()))
+        self.assertEqual(fetched.failed, ["launchpad"])
+        self.assertIn("Fetching failed: launchpad", fetched.html)
 
 
 class AISettingsTests(TestCase):

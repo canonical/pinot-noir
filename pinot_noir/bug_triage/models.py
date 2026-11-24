@@ -122,78 +122,28 @@ class StartriageAISettings(models.Model):
 
 
 class TriageReport(models.Model):
-    """Header of the latest triage run; only one row is kept."""
+    """The latest self-contained HTML and Markdown reports from startriage triage."""
 
     team = models.CharField(max_length=100)
-    title = models.CharField(max_length=200)
-    subtitle = models.CharField(max_length=300, blank=True)
     start = models.DateTimeField()
     end = models.DateTimeField()
 
     # Names of the sources whose fetch failed.
     failed_sources = models.JSONField(default=list, blank=True)
 
-    # startriage's markdown report (``triage --markdown FILE [--ai]``), which
-    # the page exports with the user's notes, and its download file name.
+    # startriage's own interactive HTML report and its full Markdown report,
+    # including the AI appendix when AI analysis was requested.
+    html = models.TextField(blank=True, default="")
     markdown = models.TextField(blank=True)
     markdown_filename = models.CharField(max_length=100, blank=True)
 
     generated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self) -> str:
-        return f"{self.title} ({self.team})"
-
-
-class TriageItem(models.Model):
-    """One row of the triage report, as produced by startriage's ReportItem."""
-
-    source = models.CharField(max_length=50)
-    key = models.CharField(max_length=200)
-
-    # Section heading ("Launchpad", "GitHub", ...) and display order.
-    section = models.CharField(max_length=100)
-    section_order = models.IntegerField(default=0)
-    position = models.IntegerField(default=0)
-
-    label = models.CharField(max_length=200)
-    url = models.URLField(max_length=500)
-    title = models.TextField()
-
-    # Lists of [text, url] pairs; url may be empty for plain text.
-    context = models.JSONField(default=list, blank=True)
-    refs = models.JSONField(default=list, blank=True)
-    assignees = models.JSONField(default=list, blank=True)
-
-    status = models.CharField(max_length=100, blank=True)
-    importance = models.CharField(max_length=100, blank=True)
-    updated = models.DateTimeField(null=True, blank=True)
-
-    # List of [series letter, state] pairs; state is open, closed or unapproved.
-    releases = models.JSONField(default=list, blank=True)
-
-    # Other tasks of the same bug.
-    further = models.JSONField(default=list, blank=True)
-
-    # Chip labels shown next to the title ("new", "reply pending", ...).
-    chips = models.JSONField(default=list, blank=True)
-
-    # Bug description (Launchpad only).
-    description = models.TextField(blank=True)
-
-    # startriage AgentResult (``--ai``) as JSON, or the reason the analysis failed.
-    ai_result = models.JSONField(null=True, blank=True)
-    ai_error = models.TextField(blank=True)
-    # startriage precheck route, why the bug was not sent to the model, and
-    # what each pipeline phase did (sync.phase_data).
-    ai_route = models.CharField(max_length=50, blank=True)
-    ai_note = models.TextField(blank=True)
-    ai_phases = models.JSONField(null=True, blank=True)
-
-    class Meta:
-        ordering = ["section_order", "position"]
-        constraints = [
-            models.UniqueConstraint(fields=["source", "key"], name="unique_triage_item_per_source")
-        ]
+    @property
+    def html_filename(self) -> str:
+        if not self.markdown_filename:
+            return "triage.html"
+        return self.markdown_filename.removesuffix(".md") + ".html"
 
     def __str__(self) -> str:
-        return f"{self.label} - {self.title}"
+        return f"Bug Triage ({self.team}, {self.generated_at:%Y-%m-%d})"

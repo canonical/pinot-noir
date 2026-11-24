@@ -1,11 +1,13 @@
 """Background task that keeps the bug triage page in sync via startriage."""
 
 import asyncio
-import logging
+import io
+import tempfile
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 from unittest import mock
 
 import aiohttp
@@ -33,32 +35,16 @@ from startriage.ai.render import AI_APPEND_NOTICE
 from startriage.ai.run import scratch_dir, team_members
 from startriage.ai.tools import ReadOnlyHTTP, ToolContext, build_tools, debian, enabled_tool_names
 from startriage.config import StarTriageConfig
-from startriage.output import ReportItem
-from startriage.source import FetchMode, TaskFilterOptions
-from startriage.sources.launchpad.models import Task
+from startriage.output import OutputConfig, OutputFormat
+from startriage.source import TaskFilterOptions
 from startriage.sources.launchpad.triage import LaunchpadTriage
-from startriage.triage import build_filter, fetch
+from startriage.triage import build_filter
 
 from pinot_noir.bug_triage.apps import PAGE_SLUG
-from pinot_noir.bug_triage.models import (
-    StartriageAISettings,
-    StartriageTeam,
-    TriageItem,
-    TriageReport,
-)
-from pinot_noir.bug_triage.sync import (
-    BugDetails,
-    TriageItemData,
-    bug_details,
-    build_config,
-    markdown_filename,
-    report_heading,
-    triage_items,
-)
+from pinot_noir.bug_triage.models import StartriageAISettings, StartriageTeam, TriageReport
+from pinot_noir.bug_triage.sync import build_config, markdown_filename
 from pinot_noir.data_manager.models import UserTokens
 from pinot_noir.pages.models import PageMetadata
-
-logger = logging.getLogger(__name__)
 
 # startriage connects to Launchpad through a module-level function; it is
 # swapped for the duration of a fetch, so only one fetch may run at a time.
@@ -88,25 +74,6 @@ def _launchpad_credentials(lp_token: str):
         mock.patch.object(startriage_launchpad, "connect_launchpad", connect_launchpad),
     ):
         yield
-
-
-def _launchpad_tasks(result: LaunchpadTriage) -> list[Task]:
-    """Return every Launchpad task shown in the report (triage, freezer and expiry tables)."""
-    tasks = result.tasks
-    return [*tasks.tasks, *tasks.freezer_tasks, *tasks.expire_level1, *tasks.expire_level2]
-
-
-def _descriptions(tasks: list[Task]) -> dict[str, str]:
-    """Return {bug number: description} (blocking Launchpad access)."""
-    descriptions: dict[str, str] = {}
-    for lp_task in tasks:
-        if lp_task.number in descriptions:
-            continue
-        try:
-            descriptions[lp_task.number] = lp_task.lp_task.bug.description or ""
-        except Exception:
-            logger.warning("Could not fetch description of LP #%s", lp_task.number, exc_info=True)
-    return descriptions
 
 
 async def _run_ai(
@@ -156,66 +123,52 @@ async def _run_ai(
 
 @dataclass
 class FetchedTriage:
-    items: list[ReportItem] = field(default_factory=list)
+    # startriage's self-contained interactive HTML report.
+    html: str = ""
     failed: list[str] = field(default_factory=list)
-    # Launchpad bug details by bug number.
-    details: dict[str, BugDetails] = field(default_factory=dict)
-    # startriage's triage markdown report.
+    # startriage's full triage Markdown, with any AI report appended.
     markdown: str = ""
 
 
-async def _fetch_report_items(
+async def _fetch_report(
     config: StarTriageConfig,
     opts: TaskFilterOptions,
     ai_provider: Provider | None = None,
-    markdown_range: str = "",
 ) -> FetchedTriage:
-    """Fetch all sources like ``startriage triage --html --markdown FILE [--ai]``.
+    """Fetch and render ``startriage triage --html --markdown FILE [--ai]``.
 
-    As with ``startriage triage --ai``, only the Launchpad bugs of the triage
-    table are analysed, and only when *ai_provider* is given. *markdown_range*
-    is the date range of the markdown report's title, e.g. " 2026-10-19".
+    startriage owns both report formats. As in its CLI, the HTML is generated
+    before the AI appendix is added to the full Markdown report.
     """
-    results = await fetch(config, opts, FetchMode.triage)
-    items: list[ReportItem] = []
-    failed: list[str] = []
-    details: dict[str, BugDetails] = {}
-    ai_report = ""
-    for source, result in results.items():
-        if result.error is not None:
-            logger.warning("startriage source %s failed: %s", source, result.error)
-            failed.append(source)
-            continue
-        items.extend(await result.report_items(None))
-        if not isinstance(result, LaunchpadTriage):
-            continue
-        descriptions = await asyncio.to_thread(_descriptions, _launchpad_tasks(result))
-        outcomes = None
-        if ai_provider is not None:
-            outcomes = await _run_ai(config, result, ai_provider)
-            if outcomes:
-                ai_report = render_report(outcomes, tools=enabled_tool_names(config.ai))
-        details = bug_details(descriptions, outcomes)
-    markdown = await startriage_report._triage_markdown(results, markdown_range)
-    if ai_report:
-        # As ``triage --markdown FILE --ai``, which appends the AI report to FILE.
-        markdown += "\n\n" + AI_APPEND_NOTICE + ai_report
-    return FetchedTriage(items, sorted(failed), details, markdown)
+    markdown_name = markdown_filename(opts)
+    html_name = markdown_name.removesuffix(".md") + ".html"
+    with tempfile.TemporaryDirectory(prefix="pinot-noir-triage-") as directory:
+        html_path = Path(directory) / html_name
+        markdown_path = Path(directory) / markdown_name
+        output = OutputConfig(
+            fmt=OutputFormat.JSON,
+            out=io.StringIO(),
+            open_in_browser=False,
+            terminal_links=False,
+            html_path=html_path,
+            markdown_path=markdown_path,
+        )
+        results = await startriage_report.triage(config, opts, output)
+        html = html_path.read_text(encoding="utf-8")
+        markdown = markdown_path.read_text(encoding="utf-8")
 
-
-def _details_fields(row: TriageItemData, details: dict[str, BugDetails]) -> dict:
-    """Return the TriageItem description/AI fields for *row*."""
-    if row.source != "launchpad" or row.key not in details:
-        return {}
-    detail = details[row.key]
-    return {
-        "description": detail.description,
-        "ai_result": detail.ai_result,
-        "ai_error": detail.ai_error,
-        "ai_route": detail.ai_route,
-        "ai_note": detail.ai_note,
-        "ai_phases": detail.ai_phases,
-    }
+    failed = sorted(name for name, result in results.items() if result.error is not None)
+    launchpad = results.get("launchpad")
+    if (
+        ai_provider is not None
+        and isinstance(launchpad, LaunchpadTriage)
+        and launchpad.error is None
+    ):
+        outcomes = await _run_ai(config, launchpad, ai_provider)
+        if outcomes:
+            ai_report = render_report(outcomes, tools=enabled_tool_names(config.ai))
+            markdown += "\n\n" + AI_APPEND_NOTICE + ai_report
+    return FetchedTriage(html=html, failed=failed, markdown=markdown)
 
 
 def _default_triage_day(today: date) -> str | None:
@@ -230,7 +183,7 @@ def refresh_bug_triage(
     triage_day: str | None = None,
     ai: bool | None = None,
 ) -> None:
-    """Replace the bug triage table with startriage's daily triage results.
+    """Replace the bug triage report with startriage's daily triage results.
 
     *team* is a StartriageTeam name; by default the default (or only) team is
     used. *triage_day* is a day name as for ``startriage triage <day>``.
@@ -276,55 +229,22 @@ def refresh_bug_triage(
     if triage_day is None:
         triage_day = _default_triage_day(timezone.localdate())
     opts = build_filter(config, team=team, triage_day=triage_day)
-    title, subtitle = report_heading(opts)
 
     with _launchpad_credentials(tokens.lp_token):
-        fetched = asyncio.run(
-            _fetch_report_items(
-                config, opts, ai_provider, markdown_range=title.removeprefix("Triage")
-            )
-        )
-    items, failed, details = fetched.items, fetched.failed, fetched.details
+        fetched = asyncio.run(_fetch_report(config, opts, ai_provider))
 
-    if len(failed) == len(opts.sources):
-        raise RuntimeError(f"All startriage sources failed: {', '.join(failed)}")
+    if len(fetched.failed) == len(opts.sources):
+        raise RuntimeError(f"All startriage sources failed: {', '.join(fetched.failed)}")
 
-    rows = triage_items(items)
-
-    # Each run is a snapshot of the triage day, so replace the whole table.
+    # Each run is a snapshot of the triage day, so replace the whole report.
     with transaction.atomic():
-        TriageItem.objects.all().delete()
-        TriageItem.objects.bulk_create(
-            TriageItem(
-                source=row.source,
-                key=row.key,
-                section=row.section,
-                section_order=row.section_order,
-                position=row.position,
-                label=row.label,
-                url=row.url,
-                title=row.title,
-                context=row.context,
-                refs=row.refs,
-                assignees=row.assignees,
-                status=row.status,
-                importance=row.importance,
-                updated=row.updated,
-                releases=row.releases,
-                further=row.further,
-                chips=row.chips,
-                **_details_fields(row, details),
-            )
-            for row in rows
-        )
         TriageReport.objects.all().delete()
         TriageReport.objects.create(
             team=opts.team,
-            title=title,
-            subtitle=subtitle,
             start=opts.start,
             end=opts.end,
-            failed_sources=failed,
+            failed_sources=fetched.failed,
+            html=fetched.html,
             markdown=fetched.markdown,
             markdown_filename=markdown_filename(opts),
         )

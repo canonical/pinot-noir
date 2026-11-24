@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .forms import StartriageAISettingsForm
-from .models import StartriageAISettings, StartriageTeam, TriageItem, TriageReport
+from .models import StartriageAISettings, StartriageTeam, TriageReport
 
 
 @admin.register(StartriageAISettings)
@@ -78,21 +78,6 @@ class StartriageTeamAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(TriageItem)
-class TriageItemAdmin(admin.ModelAdmin):
-    list_display = ("label", "section", "status", "importance", "updated", "title", "ai_status")
-    list_filter = ("section", "status", "importance")
-    search_fields = ("label", "key", "title")
-
-    @admin.display(description="AI status")
-    def ai_status(self, obj):
-        if obj.ai_result:
-            return obj.ai_result.get("status", "")
-        if obj.ai_error:
-            return "failed"
-        return obj.ai_route
-
-
 @admin.register(TriageReport)
 class TriageReportAdmin(admin.ModelAdmin):
-    list_display = ("title", "team", "subtitle", "failed_sources", "generated_at")
+    list_display = ("team", "start", "end", "failed_sources", "generated_at")
