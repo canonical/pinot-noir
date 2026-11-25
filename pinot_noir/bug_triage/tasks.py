@@ -41,7 +41,12 @@ from startriage.sources.launchpad.triage import LaunchpadTriage
 from startriage.triage import build_filter
 
 from pinot_noir.bug_triage.apps import PAGE_SLUG
-from pinot_noir.bug_triage.models import StartriageAISettings, StartriageTeam, TriageReport
+from pinot_noir.bug_triage.models import (
+    StartriageAISettings,
+    StartriageTeam,
+    TriageReport,
+    TriageSettings,
+)
 from pinot_noir.bug_triage.sync import build_config, markdown_filename
 from pinot_noir.data_manager.models import UserTokens
 from pinot_noir.pages.models import PageMetadata
@@ -183,7 +188,7 @@ def refresh_bug_triage(
     triage_day: str | None = None,
     ai: bool | None = None,
 ) -> None:
-    """Replace the bug triage report with startriage's daily triage results.
+    """Create or replace that date's report with startriage's daily triage results.
 
     *team* is a StartriageTeam name; by default the default (or only) team is
     used. *triage_day* is a day name as for ``startriage triage <day>``.
@@ -236,17 +241,20 @@ def refresh_bug_triage(
     if len(fetched.failed) == len(opts.sources):
         raise RuntimeError(f"All startriage sources failed: {', '.join(fetched.failed)}")
 
-    # Each run is a snapshot of the triage day, so replace the whole report.
+    # One report per triage date; refreshing that date replaces its contents.
     with transaction.atomic():
-        TriageReport.objects.all().delete()
-        TriageReport.objects.create(
-            team=opts.team,
-            start=opts.start,
-            end=opts.end,
-            failed_sources=fetched.failed,
-            html=fetched.html,
-            markdown=fetched.markdown,
-            markdown_filename=markdown_filename(opts),
+        TriageReport.objects.update_or_create(
+            start__date=opts.start.date(),
+            defaults={
+                "team": opts.team,
+                "start": opts.start,
+                "end": opts.end,
+                "failed_sources": fetched.failed,
+                "html": fetched.html,
+                "markdown": fetched.markdown,
+                "markdown_filename": markdown_filename(opts),
+            },
         )
+        TriageSettings.current().prune_reports()
 
     PageMetadata.touch(PAGE_SLUG)

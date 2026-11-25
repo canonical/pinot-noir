@@ -1,5 +1,10 @@
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from pydantic import ValidationError as PydanticValidationError
 from startriage.ai.tools import REGISTRY
 from startriage.config import AIConfig, AIProvider, TeamConfig
@@ -121,8 +126,46 @@ class StartriageAISettings(models.Model):
         )
 
 
+class TriageSettings(models.Model):
+    """Bug Triage report retention; only one row is used."""
+
+    retention_days = models.PositiveIntegerField(
+        default=7,
+        validators=[MinValueValidator(1)],
+        help_text=(
+            "Number of daily reports to keep. Older reports are hidden and removed on refresh."
+        ),
+    )
+
+    class Meta:
+        verbose_name = "Bug Triage Settings"
+        verbose_name_plural = "Bug Triage Settings"
+
+    @classmethod
+    def current(cls) -> "TriageSettings":
+        return cls.objects.first() or cls()
+
+    def available_reports(self):
+        """Reports within the age limit, newest first."""
+        cutoff = timezone.now() - timedelta(days=self.retention_days)
+        return (
+            TriageReport.objects.exclude(html="")
+            .filter(generated_at__gte=cutoff)
+            .order_by("-generated_at", "-pk")
+        )
+
+    def report_history(self):
+        """At most retention_days daily reports, newest first."""
+        return self.available_reports()[: self.retention_days]
+
+    def prune_reports(self) -> None:
+        """Enforce the daily-report retention limit immediately."""
+        keep = list(self.report_history().values_list("pk", flat=True))
+        TriageReport.objects.exclude(pk__in=keep).delete()
+
+
 class TriageReport(models.Model):
-    """The latest self-contained HTML and Markdown reports from startriage triage."""
+    """One self-contained HTML and Markdown report from startriage triage."""
 
     team = models.CharField(max_length=100)
     start = models.DateTimeField()
@@ -138,6 +181,11 @@ class TriageReport(models.Model):
     markdown_filename = models.CharField(max_length=100, blank=True)
 
     generated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(TruncDate("start"), name="unique_triage_report_date"),
+        ]
 
     @property
     def html_filename(self) -> str:

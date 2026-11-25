@@ -1,12 +1,15 @@
 import asyncio
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from startriage.ai import BugOutcome
 from startriage.ai.tools import REGISTRY
 from startriage.config import AIConfig, AIConfigError
@@ -18,7 +21,7 @@ from pinot_noir.data_manager.models import UserTokens
 from pinot_noir.pages.models import PageMetadata
 
 from .apps import PAGE_SLUG
-from .models import StartriageAISettings, StartriageTeam, TriageReport
+from .models import StartriageAISettings, StartriageTeam, TriageReport, TriageSettings
 from .sync import build_config
 from .tasks import FetchedTriage, _fetch_report, _run_ai, refresh_bug_triage
 
@@ -40,6 +43,16 @@ def _report(**kwargs) -> TriageReport:
         "markdown_filename": "triage-2026-10-20.md",
     }
     return TriageReport.objects.create(**{**defaults, **kwargs})
+
+
+def _age(report: TriageReport, days: int) -> TriageReport:
+    TriageReport.objects.filter(pk=report.pk).update(
+        generated_at=timezone.now() - timedelta(days=days),
+        start=report.start - timedelta(days=days),
+        end=report.end - timedelta(days=days),
+    )
+    report.refresh_from_db()
+    return report
 
 
 def _opts() -> TaskFilterOptions:
@@ -83,6 +96,13 @@ class StartriageTeamTests(TestCase):
             team.clean()
 
 
+class TriageReportTests(TestCase):
+    def test_only_one_report_per_triage_date(self):
+        report = _report()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            _report(start=report.start + timedelta(hours=1))
+
+
 class BugTriageIndexTests(TestCase):
     def test_empty_page_loads(self):
         response = self.client.get(reverse("bug_triage:index"))
@@ -113,6 +133,52 @@ class BugTriageIndexTests(TestCase):
             download["Content-Disposition"], 'attachment; filename="triage-2026-10-20.html"'
         )
 
+    def test_previous_report_selection(self):
+        previous = _age(_report(html="previous html"), 1)
+        current = _report(html="current html")
+
+        response = self.client.get(reverse("bug_triage:index"))
+        self.assertContains(response, f'value="{previous.pk}"')
+        self.assertContains(response, f'value="{current.pk}" selected')
+        self.assertContains(response, 'src="/bug-triage/report.html"')
+        self.assertContains(response, 'onchange="this.form.submit()"')
+        self.assertContains(response, 'aria-label="Report"')
+        self.assertNotContains(response, '<label for="triage-report">')
+        self.assertNotContains(response, "generated")
+        self.assertNotContains(response, ">View</button>")
+
+        response = self.client.get(reverse("bug_triage:index"), {"report": previous.pk})
+        self.assertContains(response, f'value="{previous.pk}" selected')
+        self.assertContains(response, f'src="/bug-triage/report.html?report={previous.pk}"')
+        self.assertContains(response, f'href="/bug-triage/download?report={previous.pk}"')
+        raw = self.client.get(reverse("bug_triage:report"), {"report": previous.pk})
+        self.assertEqual(raw.content.decode(), "previous html")
+        download = self.client.get(reverse("bug_triage:download"), {"report": previous.pk})
+        self.assertEqual(download.content.decode(), "previous html")
+
+    def test_reports_outside_retention_limit_and_invalid_ids_are_not_available(self):
+        TriageSettings.objects.create(retention_days=1)
+        previous = _age(_report(html="previous html"), 1)
+        _report(html="current html")
+        response = self.client.get(reverse("bug_triage:index"))
+        self.assertNotContains(response, f'value="{previous.pk}"')
+        for url_name in ("index", "report", "download"):
+            response = self.client.get(reverse(f"bug_triage:{url_name}"), {"report": previous.pk})
+            self.assertEqual(response.status_code, 404)
+        self.assertEqual(
+            self.client.get(reverse("bug_triage:index"), {"report": "invalid"}).status_code,
+            404,
+        )
+
+    def test_expired_report_is_not_available(self):
+        TriageSettings.objects.create(retention_days=7)
+        expired = _age(_report(html="expired html"), 8)
+        _report(html="current html")
+        response = self.client.get(reverse("bug_triage:index"))
+        self.assertNotContains(response, f'value="{expired.pk}"')
+        response = self.client.get(reverse("bug_triage:report"), {"report": expired.pk})
+        self.assertEqual(response.status_code, 404)
+
     def test_legacy_report_without_html_needs_a_refresh(self):
         _report(html="")
         response = self.client.get(reverse("bug_triage:index"))
@@ -135,8 +201,8 @@ class RefreshBugTriageTests(TestCase):
         _team()
 
     @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
-    def test_replaces_report(self, fetch_report):
-        _report(html="old report", markdown="old markdown")
+    def test_adds_report_and_keeps_history(self, fetch_report):
+        previous = _report(html="old report", markdown="old markdown")
         fetch_report.return_value = FetchedTriage(
             html="new startriage html",
             failed=["discourse"],
@@ -149,13 +215,63 @@ class RefreshBugTriageTests(TestCase):
         self.assertIsNone(ai_provider)
         self.assertEqual(config.general.github_token, "gh")
         self.assertEqual(opts.team, "server")
-        report = TriageReport.objects.get()
-        self.assertEqual(report.html, "new startriage html")
+        report = TriageReport.objects.get(html="new startriage html")
+        self.assertEqual(TriageReport.objects.count(), 2)
+        self.assertTrue(TriageReport.objects.filter(pk=previous.pk).exists())
         self.assertEqual(report.failed_sources, ["discourse"])
         self.assertEqual(report.markdown, "# Triage of changes on 2026-10-20\n")
         self.assertRegex(report.markdown_filename, r"^triage-\d{4}-\d{2}-\d{2}\.md$")
         self.assertEqual(report.html_filename, report.markdown_filename[:-3] + ".html")
         self.assertIsNotNone(PageMetadata.objects.get(slug=PAGE_SLUG).last_refreshed_at)
+
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_same_triage_date_replaces_existing_report(self, fetch_report):
+        opts = replace(_opts(), sources=frozenset({"launchpad"}))
+        previous = _report(
+            start=opts.start + timedelta(hours=5),
+            end=opts.end + timedelta(hours=5),
+            html="old html",
+            markdown="old markdown",
+        )
+        fetch_report.return_value = FetchedTriage(html="new html", markdown="new markdown")
+
+        with patch("pinot_noir.bug_triage.tasks.build_filter", return_value=opts):
+            refresh_bug_triage.call(username="alice")
+
+        self.assertEqual(TriageReport.objects.count(), 1)
+        report = TriageReport.objects.get()
+        self.assertEqual(report.pk, previous.pk)
+        self.assertEqual(report.start, opts.start)
+        self.assertEqual(report.html, "new html")
+        self.assertEqual(report.markdown, "new markdown")
+
+    @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
+    def test_prunes_history_by_combined_retention_limit(self, fetch_report):
+        TriageSettings.objects.create(retention_days=4)
+        _age(_report(html="expired"), 8)
+        _age(_report(html="count-pruned"), 3)
+        _age(_report(html="previous-2"), 2)
+        _age(_report(html="previous-1"), 0)
+        _age(
+            _report(
+                html="previous-0",
+                start=datetime(2026, 10, 21, tzinfo=UTC),
+                end=datetime(2026, 10, 22, tzinfo=UTC),
+            ),
+            0,
+        )
+        fetch_report.return_value = FetchedTriage(html="current")
+
+        refresh_bug_triage.call(username="alice", triage_day="tuesday")
+
+        self.assertEqual(
+            list(
+                TriageReport.objects.order_by("-generated_at", "-pk").values_list(
+                    "html", flat=True
+                )
+            ),
+            ["current", "previous-0", "previous-1", "previous-2"],
+        )
 
     @patch("pinot_noir.bug_triage.tasks._fetch_report", new_callable=AsyncMock)
     def test_all_sources_failed_keeps_report(self, fetch_report):

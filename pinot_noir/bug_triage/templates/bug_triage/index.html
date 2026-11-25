@@ -8,11 +8,18 @@
         <div class="p-panel__header">
             <h4 class="p-panel__title u-no-margin--bottom" style="margin-right: 2rem;">{{ title }}</h4>
             {% if report %}
-                <div class="p-panel__controls">
-                    <a href="{% url 'bug_triage:report' %}" target="_blank" rel="noopener" class="p-button u-no-margin--bottom" title="Open the interactive startriage HTML report">
+                <div class="p-panel__controls" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: flex-end;">
+                    <form method="get" style="display: inline-flex; align-items: center; margin: 0;">
+                        <select id="triage-report" name="report" aria-label="Report" onchange="this.form.submit()" style="margin: 0;">
+                            {% for choice in reports %}
+                                <option value="{{ choice.pk }}"{% if choice.pk == report.pk %} selected{% endif %}>{{ choice.start|date:"Y-m-d" }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <a href="{% url 'bug_triage:report' %}{{ report_query }}" target="_blank" rel="noopener" class="p-button" style="margin: 0;" title="Open the interactive startriage HTML report">
                         <i class="p-icon--external-link"></i> <span>Open HTML</span>
                     </a>
-                    <a href="{% url 'bug_triage:download' %}" class="p-button u-no-margin--bottom" title="Download the startriage HTML report">
+                    <a href="{% url 'bug_triage:download' %}{{ report_query }}" class="p-button" style="margin: 0;" title="Download the startriage HTML report">
                         <i class="p-icon--external-link"></i> <span>Save HTML</span>
                     </a>
                 </div>
@@ -28,7 +35,7 @@
                             </div>
                         </div>
                     {% endif %}
-                    <iframe src="{% url 'bug_triage:report' %}" title="Bug Triage startriage report" style="display: block; width: 100%; min-height: 70vh; border: 0; background: #fff; color-scheme: light;"></iframe>
+                    <iframe src="{% url 'bug_triage:report' %}{{ report_query }}" title="Bug Triage startriage report" style="display: block; width: 100%; min-height: 70vh; border: 0; background: #fff; color-scheme: light;"></iframe>
                 {% else %}
                     <p>Nothing to do.</p>
                 {% endif %}

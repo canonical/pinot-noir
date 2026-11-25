@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 
 from pinot_noir.site_admin.forms import LP_NAME
 
-from .models import StartriageAISettings, StartriageTeam
+from .models import StartriageAISettings, StartriageTeam, TriageSettings
 
 INPUT_CLASS = "p-form-validation__input"
 
@@ -39,6 +39,18 @@ class StartriageAISettingsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for name in ("provider", "model", "openrouter_base_url"):
             self.fields[name].widget.attrs["class"] = INPUT_CLASS
+
+
+class TriageSettingsForm(forms.ModelForm):
+    class Meta:
+        model = TriageSettings
+        fields = ("retention_days",)
+        labels = {"retention_days": "Daily reports to keep"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = INPUT_CLASS
 
 
 def default_team() -> StartriageTeam | None:

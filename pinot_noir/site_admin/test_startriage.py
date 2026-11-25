@@ -53,6 +53,8 @@ class StartriageSettingsTests(TestCase):
         response = self.client.get(self.url)
         for heading in ("Settings", "Default team", "AI analysis"):
             self.assertContains(response, heading)
+        self.assertNotContains(response, 'id="history-heading"')
+        self.assertNotIn("history_form", response.context)
         self.assertNotContains(response, "Agent tools")
         self.assertNotIn("agent_tools", response.context["ai_form"].fields)
         self.assertNotContains(response, "Commands")

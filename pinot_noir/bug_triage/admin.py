@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from .forms import StartriageAISettingsForm
-from .models import StartriageAISettings, StartriageTeam, TriageReport
+from .forms import StartriageAISettingsForm, TriageSettingsForm
+from .models import StartriageAISettings, StartriageTeam, TriageReport, TriageSettings
 
 
 @admin.register(StartriageAISettings)
@@ -76,6 +76,15 @@ class StartriageTeamAdmin(admin.ModelAdmin):
             {"fields": ("proposed_migration_teams",)},
         ),
     )
+
+
+@admin.register(TriageSettings)
+class TriageSettingsAdmin(admin.ModelAdmin):
+    form = TriageSettingsForm
+    list_display = ("retention_days",)
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request) and not TriageSettings.objects.exists()
 
 
 @admin.register(TriageReport)

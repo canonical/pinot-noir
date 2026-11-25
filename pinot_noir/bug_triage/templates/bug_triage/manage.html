@@ -1,5 +1,25 @@
 {% extends 'site_admin/base.html' %}
 
 {% block admin_content %}
+<section class="u-sv3" aria-labelledby="settings-heading">
+    <h3 class="p-heading--5" id="settings-heading">Settings</h3>
+    <h4 class="p-heading--6" id="history-heading">Report history</h4>
+    <p class="p-form-help-text" style="margin-top: 0;">Keep up to this many daily Bug Triage reports. Reports outside the retention window are hidden and removed on refresh.</p>
+    <form method="post" class="u-sv2">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="history-settings">
+        <div style="display: flex; flex-wrap: wrap; gap: 0 1.5rem; align-items: flex-start;">
+            {% for field in history_form %}
+                <div style="flex: 0 1 18rem;" class="p-form-validation{% if field.errors %} is-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="p-form-validation__message">{{ error }}</p>{% endfor %}
+                    {% if field.help_text %}<p class="p-form-help-text">{{ field.help_text }}</p>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit" class="p-button--positive">Save</button>
+    </form>
+</section>
 {% include 'site_admin/_commands.html' %}
 {% endblock %}
